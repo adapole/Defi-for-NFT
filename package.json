@@ -9,9 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^1.0.6",
+    "@json-rpc-tools/utils": "^1.7.6",
+    "@types/styled-components": "^5.1.24",
+    "@walletconnect/client": "^1.7.7",
+    "algorand-walletconnect-qrcode-modal": "^1.7.4",
+    "algosdk": "^1.15.0-beta.1",
+    "ipfs-http-client": "^56.0.1",
     "next": "12.1.4",
     "react": "18.0.0",
-    "react-dom": "18.0.0"
+    "react-dom": "18.0.0",
+    "styled-components": "^5.3.5",
+    "tailwind-scrollbar-hide": "^1.1.7"
   },
   "devDependencies": {
     "@types/node": "17.0.23",
