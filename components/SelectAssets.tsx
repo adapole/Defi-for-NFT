@@ -7,7 +7,6 @@ import {
 	testNetClientalgod,
 	testNetClientindexer,
 } from '../pages/helpers/api';
-import { ExtractUint64 } from '../pages/helpers/parsing';
 import { decodeUint64 } from 'algosdk';
 import { create } from 'ipfs-http-client';
 import MultipleValueTextInput from './MultipleValueTextInput';
