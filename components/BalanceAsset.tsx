@@ -19,6 +19,11 @@ const BalanceAsset = (props: { asset: IAssetData; bodyamount: string }) => {
 			{...props}
 		>
 			<div className='flex items-center space-x-1'>
+				{!USDCIcon && !nativeCurrencyIcon ? (
+					<ASAIcon assetID={asset.id} />
+				) : (
+					<></>
+				)}
 				{/* Algo Icon */}
 				{nativeCurrencyIcon && (
 					<Image
@@ -30,7 +35,6 @@ const BalanceAsset = (props: { asset: IAssetData; bodyamount: string }) => {
 					/>
 				)}
 				{USDCIcon && <ASAIcon assetID={31566704} />}
-
 				<div className='flex ml-2'>{asset.name}</div>
 			</div>
 			<div className='flex'>

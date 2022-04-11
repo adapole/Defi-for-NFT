@@ -32,7 +32,61 @@ function clientForChain(chain: ChainType): algosdk.Algodv2 {
 			throw new Error(`Unknown chain type: ${chain}`);
 	}
 }
+export async function tealProgramDispence(
+	assetId: number,
+	amount: number | bigint
+) {
+	let params = await testNetClientalgod.getTransactionParams().do();
+	console.log(params);
 
+	let data =
+		'#pragma version 5 \nglobal ZeroAddress \ndup \ndup \ntxn RekeyTo \n== \nassert \ntxn CloseRemainderTo \n== \nassert \ntxn AssetCloseTo \n== \nassert \ntxn Fee \nglobal MinTxnFee \nint 2 \n* \n<= \ntxn TypeEnum \nint axfer \n== \n&& \ntxn XferAsset \narg_0 \nbtoi \n== \n&& \ntxn AssetAmount \narg_1 \nbtoi \n<= \n&& \nreturn';
+	let results = await testNetClientalgod.compile(data).do();
+	console.log('Hash = ' + results.hash);
+	console.log('Result = ' + results.result);
+	let myAccount = algosdk.mnemonicToSecretKey(
+		process.env.TESTACCOUNT_MENMONIC ?? ''
+	);
+
+	let program = new Uint8Array(Buffer.from(results.result, 'base64'));
+	//let round = params.firstRound + 172800;
+	let args = dispenceUint8Args(assetId, amount);
+	let lsig = new algosdk.LogicSigAccount(program, args);
+	lsig.sign(myAccount.sk);
+	let lsigs = lsig.toByte();
+	//console.log(lsigs);
+	return lsigs;
+}
+function dispenceUint8Args(assetId: number, amount: number | bigint) {
+	return [algosdk.encodeUint64(assetId), algosdk.encodeUint64(amount)];
+}
+export async function tealProgramMake(amount: number) {
+	let params = await testNetClientalgod.getTransactionParams().do();
+	console.log(params);
+
+	let data =
+		'#pragma version 5 \nglobal ZeroAddress \ndup \ndup \ntxn RekeyTo \n== \nassert \ntxn CloseRemainderTo \n== \nassert \ntxn AssetCloseTo \n== \nassert \ntxn Fee \nint 0 \n== \ntxn XferAsset \narg_0 \nbtoi \n== \ntxn AssetAmount \narg_1 \nbtoi \n<= \ntxn LastValid \narg_2 \nbtoi \n<= \ngtxn 0 TypeEnum \nint appl \n== \ngtxn 0 ApplicationID \narg_3 \nbtoi \n== \n&& \n&& \n&& \n&& \n&& \nreturn';
+	let results = await testNetClientalgod.compile(data).do();
+	console.log('Hash = ' + results.hash);
+	console.log('Result = ' + results.result);
+	// AlgoSigner here
+
+	let program = new Uint8Array(Buffer.from(results.result, 'base64'));
+	//return program;
+	let round = params.firstRound + 172800;
+	let args = getUint8Args(amount, round);
+	let lsig = new algosdk.LogicSigAccount(program, args);
+	return lsig.toByte();
+}
+
+function getUint8Args(amount: number, round: number) {
+	return [
+		algosdk.encodeUint64(10458941),
+		algosdk.encodeUint64(amount),
+		algosdk.encodeUint64(round),
+		algosdk.encodeUint64(79061945),
+	];
+}
 export async function apiGetAccountAssets(
 	chain: ChainType,
 	address: string
