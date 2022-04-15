@@ -19,6 +19,16 @@ import Header from '../components/Header';
 import { ScenarioReturnType, Scenario } from './scenarios';
 import Body from '../components/Body';
 import MultipleValueTextInput from '../components/MultipleValueTextInput';
+import Ripple3D from '../components/3Dripple';
+import Dashboard from '../components/Dashboard';
+//import WalletSelector from '../components/WalletSelector';
+import dynamic from 'next/dynamic';
+const DynamicComponentWithNoSSR = dynamic(
+	() => import('../components/WalletSelector'),
+	{
+		ssr: false,
+	}
+);
 
 interface IResult {
 	method: string;
@@ -85,7 +95,7 @@ class Home extends React.Component<unknown, IAppState> {
 
 		// subscribe to events
 		await this.subscribeToEvents();
-		await this.JinaAppOptin();
+		//await this.JinaAppOptin();
 	};
 	public subscribeToEvents = () => {
 		const { connector } = this.state;
@@ -401,7 +411,13 @@ class Home extends React.Component<unknown, IAppState> {
 		this.setState({ pendingRequest: true, showModal: true });
 		//await testNetClientalgod.accountApplicationInformation(address,index).do()
 	};
-
+	public returnWallet = async (data: any) => {
+		if (!!data) {
+			console.log(data.connector.check());
+			console.log(await data.connector.connect());
+			console.log(data.connector.provider);
+		}
+	};
 	public render = () => {
 		const {
 			connector,
@@ -438,6 +454,10 @@ class Home extends React.Component<unknown, IAppState> {
 							<>
 								<div className='flex space-x-4 items-center'>
 									<p className='link'>About</p>
+									<DynamicComponentWithNoSSR
+										returnWallet={this.returnWallet}
+										wallets={['myalgowallet', 'walletconnect']}
+									/>
 								</div>
 								<div className='flex space-x-4 items-center'>
 									<div className='relative group'>
@@ -458,7 +478,7 @@ class Home extends React.Component<unknown, IAppState> {
 					<div>
 						{/* Body */}
 						{!address && !assets.length ? (
-							<></>
+							<>{/* <Dashboard /> */}</>
 						) : (
 							<>
 								<Body

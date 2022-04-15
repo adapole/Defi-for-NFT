@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { IAssetData } from '../pages/helpers/types';
+import { assetsContext } from '../pages/helpers/assetsContext';
 import {
 	apiGetAccountAssets,
 	apiGetTxnParams,
@@ -18,6 +18,7 @@ const ipfs = create({
 
 const SelectAssets = (props: { assetid: number }) => {
 	const [assetName, setAssetName] = React.useState(null);
+	const AssetsContext = React.useContext(assetsContext);
 
 	const { assetid } = props;
 	const borrowGetLogic = async (ipfsPath: string): Promise<Uint8Array> => {
@@ -142,7 +143,7 @@ const SelectAssets = (props: { assetid: number }) => {
 		return u8;
 	}
 	React.useEffect(() => {
-		name();
+		//name();
 	}, []);
 	return (
 		<div
@@ -150,13 +151,24 @@ const SelectAssets = (props: { assetid: number }) => {
 			{...props}
 		>
 			<MultipleValueTextInput
-				onItemAdded={() => console.log(`Item added: `)}
+				onItemAdded={() => {
+					console.log(`Item added: `);
+				}}
 				onItemDeleted={() => console.log(`Item Deleted: `)}
 				//label='Asset'
 				name='item-input'
 				placeholder='Allowed assetId; separate them with COMMA or ENTER.'
 				values={[assetid.toString()]}
 			/>
+			Component S - {AssetsContext.countState}
+			<button
+				onClick={(e) => {
+					e.preventDefault();
+					AssetsContext.countDispatch('increment');
+				}}
+			>
+				increment
+			</button>
 		</div>
 	);
 };

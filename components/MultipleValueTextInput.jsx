@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 //import '../styles/styles.scss';
 import MultipleValueTextInputItem from './MultipleValueTextInputItem';
+import { assetsContext } from '../pages/helpers/assetsContext';
 
 const propTypes = {
 	/** Any values the input's collection should be prepopulated with. */
@@ -57,6 +58,8 @@ class MultipleValueTextInput extends Component {
 		this.handleItemRemove = this.handleItemRemove.bind(this);
 		this.handleBlur = this.handleBlur.bind(this);
 	}
+	static contextType = assetsContext;
+
 	handleKeypress(e) {
 		const { onItemAdded, charCodes } = this.props;
 		// 13: Enter, 44: Comma
@@ -79,12 +82,16 @@ class MultipleValueTextInput extends Component {
 			value: '',
 		});
 		onItemAdded(value, newValues);
+		this.context.countDispatch('increment');
+		this.context.assetSelect(newValues);
 	}
 	handleItemRemove(value) {
 		const currentValues = this.state.values;
 		const newValues = currentValues.filter((v) => v !== value);
 		this.props.onItemDeleted(value, newValues);
 		this.setState({ values: newValues });
+		this.context.countDispatch('decrement');
+		this.context.assetSelect(newValues);
 	}
 	handleBlur(e) {
 		const { onItemAdded, shouldAddOnBlur } = this.props;
@@ -121,6 +128,7 @@ class MultipleValueTextInput extends Component {
 				handleItemRemove={this.handleItemRemove}
 			/>
 		));
+		console.log(this.context);
 		return (
 			<div>
 				<label

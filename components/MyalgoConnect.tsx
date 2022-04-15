@@ -1,12 +1,13 @@
 import MyAlgoConnect from '@randlabs/myalgo-connect';
 import algosdk from 'algosdk';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useContext } from 'react';
 import {
 	apiGetTxnParams,
 	ChainType,
 	testNetClientalgod,
 } from '../pages/helpers/api';
 import { create } from 'ipfs-http-client';
+import { assetsContext } from '../pages/helpers/assetsContext';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,
@@ -17,6 +18,7 @@ export default function MyalgoConnect(props: {
 	round: number;
 }) {
 	const { amount, round } = props;
+	const AssetsContext = useContext(assetsContext);
 
 	let rounds = round;
 	if (round == undefined) rounds = 10;
@@ -41,6 +43,7 @@ export default function MyalgoConnect(props: {
 		console.log(sender);
 	};
 	const [fileUrl, updateFileUrl] = useState(``);
+	console.log(AssetsContext.countState);
 	useEffect(() => {
 		console.log('render for ipfsPath');
 
@@ -115,9 +118,9 @@ export default function MyalgoConnect(props: {
 		const assetID = algosdk.encodeUint64(77141623);
 		const amount64 = algosdk.encodeUint64(Number(newAmount));
 		const validRound64 = algosdk.encodeUint64(validRound);
-		const lsaHashFull = new TextDecoder().decode(hashVal);
+		/* 	const lsaHashFull = new TextDecoder().decode(hashVal);
 		const lsaHashFullTo8 = lsaHashFull.substring(0, 8);
-		const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8));
+		const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8)); */
 		console.log(hashIpfs);
 		const ipfsLsaHash = Uint8Array.from(Buffer.from(hashIpfs));
 
@@ -195,10 +198,11 @@ export default function MyalgoConnect(props: {
 				onClick={(e) => {
 					e.preventDefault();
 					connect();
+					AssetsContext.countDispatch('increment');
 				}}
 				className='btn'
 			>
-				Connect
+				Connect- {AssetsContext.countState}
 			</button>
 		</>
 	);

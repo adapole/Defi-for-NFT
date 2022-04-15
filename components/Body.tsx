@@ -1,6 +1,13 @@
 import Head from 'next/head';
+import Select from 'react-select';
 import { CheckCircleIcon, XIcon } from '@heroicons/react/solid';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useReducer,
+	useRef,
+	useState,
+} from 'react';
 import { useRouter } from 'next/router';
 import { formatBigNumWithDecimals } from '../pages/helpers/utilities';
 import {
@@ -32,6 +39,7 @@ import Loader from './Loader';
 import SelectAssets from './SelectAssets';
 import dynamic from 'next/dynamic';
 import { create } from 'ipfs-http-client';
+import { assetsContext } from '../pages/helpers/assetsContext';
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
 });
@@ -1204,7 +1212,24 @@ export default function Body(props: {
 		}
 	}
 	const [holdSelect, setHoldSelect] = useState(0);
-
+	const [assetsSelected, setAssetsSelected] = useState(['77141623']);
+	const initialState = 0;
+	const reducer = (state: any, action: any) => {
+		switch (action) {
+			case 'increment':
+				return state + 1;
+			case 'decrement':
+				return state - 1;
+			default:
+				return state;
+		}
+	};
+	const [count, dispatch] = useReducer(reducer, initialState);
+	const options = [
+		{ value: 'LFT-jina', label: 'LFT-jina' },
+		{ value: 'strawberry', label: 'Strawberry' },
+		{ value: 'Jusd', label: 'jusd' },
+	];
 	return (
 		<div>
 			{/* Body component */}
@@ -1286,7 +1311,17 @@ export default function Body(props: {
 							asset={USDCtoken}
 							bodyamount={newAmount2}
 						/>
-						<SelectAssets assetid={77141623} />
+						<assetsContext.Provider
+							value={{
+								countState: count,
+								countDispatch: dispatch,
+								assetSelect: setAssetsSelected,
+								assetVals: assetsSelected,
+							}}
+						>
+							{assetsSelected} {' Count'} - {count}
+							<SelectAssets assetid={77141623} />
+						</assetsContext.Provider>
 					</>
 				)}
 				{openTab === 4 &&
@@ -1299,7 +1334,7 @@ export default function Body(props: {
 					))}
 				{/* <Tabs color='blue' /> */}
 				<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-					<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+					<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
 						{openTab === 1 && (
 							<>
 								<span
@@ -1311,7 +1346,13 @@ export default function Body(props: {
 								>
 									MAX
 								</span>
-								<span className='pl-2 text-gray-500'>LFT-jina</span>
+								<span className='pl-2 text-gray-500'>
+									<Select
+										options={options}
+										defaultValue={options[0]}
+										isSearchable={true}
+									/>
+								</span>
 							</>
 						)}
 						{openTab === 2 && (
@@ -1356,7 +1397,7 @@ export default function Body(props: {
 								<span className='pl-2 text-gray-500'>JUSD</span>
 							</>
 						)}
-					</p>
+					</div>
 					<input
 						ref={searchInputRef}
 						type='number'
@@ -1522,8 +1563,20 @@ export default function Body(props: {
 							}}
 							className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'
 						>
-							{/* <AlgoSignerLsig /> */}
-							<DynamicComponentWithNoSSR amount={userInput} round={expireday} />
+							<assetsContext.Provider
+								value={{
+									countState: count,
+									countDispatch: dispatch,
+									assetSelect: setAssetsSelected,
+									assetVals: assetsSelected,
+								}}
+							>
+								{/* <AlgoSignerLsig /> */}
+								<DynamicComponentWithNoSSR
+									amount={userInput}
+									round={expireday}
+								/>
+							</assetsContext.Provider>
 						</div>
 					</>
 				)}
