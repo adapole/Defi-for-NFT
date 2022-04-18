@@ -5,11 +5,11 @@ import {
 	apiGetTxnParams,
 	ChainType,
 	testNetClientalgod,
-} from '../pages/helpers/api';
+} from '../lib/helpers/api';
 //import contractJSON from '../public/d4t.json';
 import { create } from 'ipfs-http-client';
-import { assetsContext } from '../pages/helpers/assetsContext';
-import { APP_ID, DUSD, USDC } from '../pages/helpers/constants';
+import { assetsContext } from '../lib/helpers/assetsContext';
+import { APP_ID, DUSD, USDC } from '../lib/helpers/constants';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,

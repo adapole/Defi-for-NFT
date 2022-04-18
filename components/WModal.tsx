@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 
 import { WalletButton } from './WalletButton';
 
-import { useWallet } from '../pages/helpers/ProvideWallet';
+import { useWallet } from '../lib/helpers/ProvideWallet';
 
 export const Modal = (props: { isOpen: boolean; closeModal: any }) => {
 	const { isOpen, closeModal } = props;

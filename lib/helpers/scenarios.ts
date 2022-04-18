@@ -1,5 +1,5 @@
 import algosdk from 'algosdk';
-import { apiGetTxnParams, ChainType } from './helpers/api';
+import { apiGetTxnParams, ChainType } from './api';
 
 const testAccounts = [
 	algosdk.mnemonicToSecretKey(

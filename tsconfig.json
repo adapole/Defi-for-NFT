@@ -23,7 +23,7 @@
 		"components/MultipleValueTextInputItem.jsx",
 		"components/MultipleValueTextInput.jsx",
 		"components/wallets/connectors/algosigner.js",
-		"pages/helpers/useProvideWallet.js"
+		"lib/helpers/useProvideWallet.js"
 	],
 	"exclude": ["node_modules"]
 }

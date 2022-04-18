@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 //import '../styles/styles.scss';
 import MultipleValueTextInputItem from './MultipleValueTextInputItem';
-import { assetsContext } from '../pages/helpers/assetsContext';
+import { assetsContext } from '../lib/helpers/assetsContext';
 
 const propTypes = {
 	/** Any values the input's collection should be prepopulated with. */

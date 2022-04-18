@@ -1,12 +1,12 @@
 import * as React from 'react';
-import { assetsContext } from '../pages/helpers/assetsContext';
+import { assetsContext } from '../lib/helpers/assetsContext';
 import {
 	apiGetAccountAssets,
 	apiGetTxnParams,
 	ChainType,
 	testNetClientalgod,
 	testNetClientindexer,
-} from '../pages/helpers/api';
+} from '../lib/helpers/api';
 import { decodeUint64 } from 'algosdk';
 import { create } from 'ipfs-http-client';
 import MultipleValueTextInput from './MultipleValueTextInput';

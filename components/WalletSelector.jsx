@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 import { Modal } from './WModal';
-import { ProvideWallet, useWallet } from '../pages/helpers/ProvideWallet';
+import { ProvideWallet, useWallet } from '../lib/helpers/ProvideWallet';
 
 /**
  * Primary UI component for user interaction

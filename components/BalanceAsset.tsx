@@ -2,8 +2,8 @@ import * as React from 'react';
 import Image from 'next/image';
 import ASAIcon from './ASAIcon';
 import algo from '../public/algo.svg';
-import { formatBigNumWithDecimals } from '../pages/helpers/utilities';
-import { IAssetData } from '../pages/helpers/types';
+import { formatBigNumWithDecimals } from '../lib/helpers/utilities';
+import { IAssetData } from '../lib/helpers/types';
 
 const BalanceAsset = (props: { asset: IAssetData; bodyamount: string }) => {
 	const { asset, bodyamount } = props;

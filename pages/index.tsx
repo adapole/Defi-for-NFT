@@ -11,25 +11,23 @@ import {
 	apiGetTxnParams,
 	apiSubmitTransactions,
 	ChainType,
-} from './helpers/api';
-import { IAssetData, IWalletTransaction, SignTxnParams } from './helpers/types';
+} from '../lib/helpers/api';
+import {
+	IAssetData,
+	IWalletTransaction,
+	SignTxnParams,
+} from '../lib/helpers/types';
 import Modal from '../components/Modal';
 import Loader from '../components/Loader';
 import Header from '../components/Header';
-import { ScenarioReturnType, Scenario } from './scenarios';
+import { ScenarioReturnType, Scenario } from '../lib/helpers/scenarios';
 import Body from '../components/Body';
 import MultipleValueTextInput from '../components/MultipleValueTextInput';
 import Ripple3D from '../components/3Dripple';
 //import Dashboard from '../components/Dashboard';
 //import WalletSelector from '../components/WalletSelector';
 import dynamic from 'next/dynamic';
-import { Accounts } from '@randlabs/myalgo-connect';
-const DynamicComponentWithNoSSR = dynamic(
-	() => import('../components/WalletSelector'),
-	{
-		ssr: false,
-	}
-);
+//import { Accounts } from '@randlabs/myalgo-connect';
 
 interface IResult {
 	method: string;
@@ -57,7 +55,7 @@ interface IAppState {
 	chain: ChainType;
 	assets: IAssetData[];
 	wc: boolean;
-	maccounts: Accounts[] | null;
+	//maccounts: Accounts[] | null;
 }
 
 const INITIAL_STATE: IAppState = {
@@ -75,14 +73,19 @@ const INITIAL_STATE: IAppState = {
 	chain: ChainType.TestNet,
 	assets: [],
 	wc: false,
-	maccounts: null,
+	//maccounts: null,
 };
 
 class Home extends React.Component<unknown, IAppState> {
 	public state: IAppState = {
 		...INITIAL_STATE,
 	};
-
+	public DynamicComponentWithNoSSR = dynamic(
+		() => import('../components/WalletSelector'),
+		{
+			ssr: false,
+		}
+	);
 	public walletConnectInit = async () => {
 		// bridge url
 		const bridge = 'https://bridge.walletconnect.org';
@@ -441,7 +444,7 @@ class Home extends React.Component<unknown, IAppState> {
 				connected: true,
 				accounts,
 				address,
-				maccounts: accounts,
+				//maccounts: accounts,
 			});
 			console.log(address);
 			try {
@@ -503,7 +506,7 @@ class Home extends React.Component<unknown, IAppState> {
 			pendingSubmissions,
 			result,
 			wc,
-			maccounts,
+			//maccounts,
 		} = this.state;
 
 		return (
@@ -532,7 +535,7 @@ class Home extends React.Component<unknown, IAppState> {
 									<p className='link'>About</p>
 								</div>
 								<div className='flex space-x-4 items-center'>
-									<DynamicComponentWithNoSSR
+									<this.DynamicComponentWithNoSSR
 										returnWallet={this.returnWallet}
 										wallets={['myalgowallet', 'walletconnect']}
 									/>
@@ -554,7 +557,7 @@ class Home extends React.Component<unknown, IAppState> {
 									address={address}
 									chain={chain}
 									wc={wc}
-									maccounts={maccounts}
+									//maccounts={maccounts}
 								/>
 							</>
 						)}

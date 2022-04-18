@@ -1,5 +1,5 @@
-import { ChainType } from '../pages/helpers/api';
-import { ellipseAddress } from '../pages/helpers/utilities';
+import { ChainType } from '../lib/helpers/api';
+import { ellipseAddress } from '../lib/helpers/utilities';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
 import styled from 'styled-components';

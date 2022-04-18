@@ -9,18 +9,18 @@ import React, {
 	useState,
 } from 'react';
 import { useRouter } from 'next/router';
-import { formatBigNumWithDecimals } from '../pages/helpers/utilities';
+import { formatBigNumWithDecimals } from '../lib/helpers/utilities';
 import {
 	IAssetData,
 	IWalletTransaction,
 	SignTxnParams,
-} from '../pages/helpers/types';
+} from '../lib/helpers/types';
 import algosdk from 'algosdk';
 import {
 	ScenarioReturnType,
 	Scenario,
 	AssetTransactionType,
-} from '../pages/scenarios';
+} from '../lib/helpers/scenarios';
 import {
 	ChainType,
 	apiGetTxnParams,
@@ -30,7 +30,7 @@ import {
 	tealProgramDispence,
 	testNetClientindexer,
 	testNetClientalgod,
-} from '../pages/helpers/api';
+} from '../lib/helpers/api';
 import BalanceAsset from '../components/BalanceAsset';
 import { formatJsonRpcRequest } from '@json-rpc-tools/utils';
 import WalletConnect from '@walletconnect/client';
@@ -39,8 +39,8 @@ import Loader from './Loader';
 import SelectAssets from './SelectAssets';
 import dynamic from 'next/dynamic';
 import { create } from 'ipfs-http-client';
-import { assetsContext } from '../pages/helpers/assetsContext';
-import { Accounts } from '@randlabs/myalgo-connect';
+import { assetsContext } from '../lib/helpers/assetsContext';
+//import { Accounts } from '@randlabs/myalgo-connect';
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
 });
@@ -156,9 +156,9 @@ export default function Body(props: {
 	address: string;
 	chain: ChainType;
 	wc: boolean;
-	maccounts: Accounts[] | null;
+	//maccounts: Accounts[] | null;
 }) {
-	const { assets, connector, address, chain, wc, maccounts } = props;
+	const { assets, connector, address, chain, wc } = props;
 	//console.log(lsa);
 	const [makeLogicSig, setMakeLogicSig] = useState(new Uint8Array());
 	const [borrowLogicSig, setBorrowLogicSig] = useState(new Uint8Array());
@@ -1572,7 +1572,7 @@ export default function Body(props: {
 									assetSelect: setAssetsSelected,
 									assetVals: assetsSelected,
 									addressVal: address,
-									maccounts: maccounts,
+									//maccounts: maccounts,
 								}}
 							>
 								{/* <AlgoSignerLsig /> */}
