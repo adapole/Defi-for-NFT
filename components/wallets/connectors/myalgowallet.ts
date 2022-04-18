@@ -1,11 +1,15 @@
 import MyAlgoConnect from '@randlabs/myalgo-connect';
 
 const ConnectToMyAlgo = () => {
-	const myAlgoWallet = new MyAlgoConnect();
+	const myAlgoWallet = new MyAlgoConnect({ disableLedgerNano: false });
+	const settings = {
+		shouldSelectOneAccount: false,
+		openManager: false,
+	};
 
 	return {
 		provider: myAlgoWallet,
-		connect: async () => await myAlgoWallet.connect(),
+		connect: async () => await myAlgoWallet.connect(settings),
 		check: () => false,
 	};
 };

@@ -17,7 +17,8 @@ const ConnectToWalletConnect = (opts: any) => {
 		provider: connector,
 		connect: async () => {
 			if (!connector.connected) {
-				await connector.createSession();
+				//await connector.createSession();
+				console.log('connect index');
 			}
 		},
 		check: () => checkConnection(connector),

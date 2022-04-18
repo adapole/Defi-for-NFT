@@ -1,0 +1,210 @@
+{
+	"name": "d4t",
+	"networks": {
+		"default": {
+			"appID": 84436769
+		}
+	},
+	"methods": [
+		{
+			"name": "create",
+			"desc": "creates d4t app",
+			"args": [
+				{
+					"name": "mng",
+					"type": "application",
+					"desc": "manager contract application ID"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "manage",
+			"desc": "optin to dusd and usdc",
+			"args": [
+				{
+					"name": "mng",
+					"type": "application"
+				},
+				{
+					"name": "dusd",
+					"type": "asset"
+				},
+				{
+					"name": "usdc",
+					"type": "asset"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "optin",
+			"desc": "optin call to d4t dapp",
+			"args": [
+				{
+					"name": "mng",
+					"type": "application"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "earn",
+			"desc": "provide USDCa as liquidity to earn payments",
+			"args": [
+				{
+					"name": "xids",
+					"type": "uint64[]"
+				},
+				{
+					"name": "aamt",
+					"type": "uint64"
+				},
+				{
+					"name": "lvr",
+					"type": "uint64"
+				},
+				{
+					"name": "lsa",
+					"type": "byte[]"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "claim",
+			"desc": "claim USDCa for dUSD at 1:1",
+			"args": [
+				{
+					"type": "axfer",
+					"desc": "sent dusd"
+				},
+				{
+					"type": "asset",
+					"desc": "usdc from itxn"
+				},
+				{
+					"name": "mng",
+					"type": "application"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "repay",
+			"desc": "pay back loan, if full amount is repaid asset will be unfrozen",
+			"args": [
+				{
+					"type": "axfer"
+				},
+				{
+					"name": "xids",
+					"type": "uint64[]"
+				},
+				{
+					"name": "ramt",
+					"type": "uint64[]"
+				},
+				{
+					"name": "xaid",
+					"type": "asset"
+				},
+				{
+					"name": "mng",
+					"type": "application"
+				},
+				{
+					"name": "lqt",
+					"type": "application"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "change_collateral_amount",
+			"desc": "change the collateral amount of an asset",
+			"args": [
+				{
+					"name": "xids",
+					"type": "uint64[]"
+				},
+				{
+					"name": "camt",
+					"type": "uint64[]"
+				},
+				{
+					"name": "xaid",
+					"type": "asset"
+				},
+				{
+					"name": "mng",
+					"type": "application"
+				},
+				{
+					"name": "lqt",
+					"type": "application"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		},
+		{
+			"name": "borrow",
+			"desc": "borrow against your NFTs by locking them in your account",
+			"args": [
+				{
+					"name": "usdc",
+					"type": "axfer"
+				},
+				{
+					"name": "xids",
+					"type": "uint64[]"
+				},
+				{
+					"name": "camt",
+					"type": "uint64[]"
+				},
+				{
+					"name": "lamt",
+					"type": "uint64[]"
+				},
+				{
+					"name": "lenders",
+					"type": "account"
+				},
+				{
+					"name": "xaid",
+					"type": "asset"
+				},
+				{
+					"name": "dusd",
+					"type": "asset"
+				},
+				{
+					"name": "mng",
+					"type": "application"
+				},
+				{
+					"name": "lqt",
+					"type": "application"
+				}
+			],
+			"returns": {
+				"type": "void"
+			}
+		}
+	]
+}

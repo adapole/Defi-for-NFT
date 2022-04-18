@@ -160,7 +160,7 @@ const SelectAssets = (props: { assetid: number }) => {
 				placeholder='Allowed assetId; separate them with COMMA or ENTER.'
 				values={[assetid.toString()]}
 			/>
-			Component S - {AssetsContext.countState}
+			{/* Component S - {AssetsContext.countState}
 			<button
 				onClick={(e) => {
 					e.preventDefault();
@@ -168,7 +168,7 @@ const SelectAssets = (props: { assetid: number }) => {
 				}}
 			>
 				increment
-			</button>
+			</button> */}
 		</div>
 	);
 };

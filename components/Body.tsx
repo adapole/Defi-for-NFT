@@ -40,6 +40,7 @@ import SelectAssets from './SelectAssets';
 import dynamic from 'next/dynamic';
 import { create } from 'ipfs-http-client';
 import { assetsContext } from '../pages/helpers/assetsContext';
+import { Accounts } from '@randlabs/myalgo-connect';
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
 });
@@ -154,8 +155,10 @@ export default function Body(props: {
 	connector: WalletConnect | null;
 	address: string;
 	chain: ChainType;
+	wc: boolean;
+	maccounts: Accounts[] | null;
 }) {
-	const { assets, connector, address, chain } = props;
+	const { assets, connector, address, chain, wc, maccounts } = props;
 	//console.log(lsa);
 	const [makeLogicSig, setMakeLogicSig] = useState(new Uint8Array());
 	const [borrowLogicSig, setBorrowLogicSig] = useState(new Uint8Array());
@@ -1319,7 +1322,6 @@ export default function Body(props: {
 								assetVals: assetsSelected,
 							}}
 						>
-							{assetsSelected} {' Count'} - {count}
 							<SelectAssets assetid={77141623} />
 						</assetsContext.Provider>
 					</>
@@ -1487,7 +1489,7 @@ export default function Body(props: {
 									{name}
 								</button>
 							))}
-							<button
+							{/* <button
 								onClick={(e) => {
 									e.preventDefault();
 									LatestValue(address, chain, 0);
@@ -1495,7 +1497,7 @@ export default function Body(props: {
 								className='btn'
 							>
 								Increase Collateral
-							</button>
+							</button> */}
 							<button
 								onClick={(e) => {
 									e.preventDefault();
@@ -1569,13 +1571,21 @@ export default function Body(props: {
 									countDispatch: dispatch,
 									assetSelect: setAssetsSelected,
 									assetVals: assetsSelected,
+									addressVal: address,
+									maccounts: maccounts,
 								}}
 							>
 								{/* <AlgoSignerLsig /> */}
-								<DynamicComponentWithNoSSR
-									amount={userInput}
-									round={expireday}
-								/>
+								{wc ? (
+									<>
+										<p>Connect with MyAlgo wallet to access LogicSig</p>
+									</>
+								) : (
+									<DynamicComponentWithNoSSR
+										amount={userInput}
+										round={expireday}
+									/>
+								)}
 							</assetsContext.Provider>
 						</div>
 					</>

@@ -6,8 +6,10 @@ import {
 	ChainType,
 	testNetClientalgod,
 } from '../pages/helpers/api';
+//import contractJSON from '../public/d4t.json';
 import { create } from 'ipfs-http-client';
 import { assetsContext } from '../pages/helpers/assetsContext';
+import { APP_ID, DUSD, USDC } from '../pages/helpers/constants';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,
@@ -25,7 +27,7 @@ export default function MyalgoConnect(props: {
 
 	const bigAmount = amount.toString();
 	const newAmount = bigAmount + '000000';
-	const [result, setResult] = useState('');
+	const [result, setResult] = useState(AssetsContext.addressVal);
 	const [validRound, setValidRound] = useState(2);
 	const [hashVal, setHashVal] = useState(new Uint8Array());
 	const [hashIpfs, setHashIpfs] = useState('');
@@ -113,9 +115,20 @@ export default function MyalgoConnect(props: {
 		//setHashVal(hash);
 		//writeUserData(result, hash, lsa);
 	};
+	function encodeToUint64(count: number) {
+		let values: Array<number> = [1, 23, 24, 25];
+		//values.push();
+		let va: Uint8Array = new Uint8Array();
+
+		for (let n = 0; n < count; n++) {
+			let a = algosdk.encodeUint64(values[n]);
+			va.set(a, n);
+		}
+		return va;
+	}
 	const stake = async () => {
 		const suggestedParams = await apiGetTxnParams(ChainType.TestNet);
-		const assetID = algosdk.encodeUint64(77141623);
+		const assetID = algosdk.encodeUint64(DUSD);
 		const amount64 = algosdk.encodeUint64(Number(newAmount));
 		const validRound64 = algosdk.encodeUint64(validRound);
 		/* 	const lsaHashFull = new TextDecoder().decode(hashVal);
@@ -123,10 +136,37 @@ export default function MyalgoConnect(props: {
 		const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8)); */
 		console.log(hashIpfs);
 		const ipfsLsaHash = Uint8Array.from(Buffer.from(hashIpfs));
-
+		console.log(APP_ID);
+		// since they happen to be the same
+		/* 
+		// Parse the json file into an object, pass it to create an ABIContract object
+	const contract = new algosdk.ABIContract(JSON.parse(contractJSON.toString()));
+	// Utility function to return an ABIMethod by its name
+	function getMethodByName(name: string): algosdk.ABIMethod {
+		const m = contract.methods.find((mt: algosdk.ABIMethod) => {
+			return mt.name == name;
+		});
+		if (m === undefined) throw Error('Method undefined: ' + name);
+		return m;
+	}
+	const commonParams = {
+	appID:contract.networks["default"].appID,
+	sender:result,
+	suggestedParams:suggestedParams,
+	signer: algosdk.makeBasicAccountTransactionSigner(AssetsContext.maccounts)
+}
+const comp = new algosdk.AtomicTransactionComposer()
+const xids = algosdk.encodeUint64(77141623);//encodeToUint64(2)
+const aamt = algosdk.encodeUint64(Number(newAmount));
+const lvr = algosdk.encodeUint64(validRound);
+const lsa = Uint8Array.from(Buffer.from(hashIpfs));
+// Simple ABI Calls with standard arguments, return type
+comp.addMethodCall({
+	method: getMethodByName("earn"), methodArgs: [xids,aamt,lvr,lsa], ...commonParams
+}) */
 		const txn = algosdk.makeApplicationNoOpTxnFromObject({
 			from: result,
-			appIndex: 79061945,
+			appIndex: APP_ID,
 			appArgs: [
 				Uint8Array.from(Buffer.from('lend')),
 				assetID,
@@ -197,21 +237,21 @@ export default function MyalgoConnect(props: {
 			<button
 				onClick={(e) => {
 					e.preventDefault();
-					connect();
+					//connect();
 					AssetsContext.countDispatch('increment');
 				}}
 				className='btn'
 			>
-				Connect- {AssetsContext.countState}
+				{AssetsContext.countState}
 			</button>
 		</>
 	);
 }
 function getUint8Args(amount: number, round: number) {
 	return [
-		algosdk.encodeUint64(10458941),
+		algosdk.encodeUint64(USDC),
 		algosdk.encodeUint64(amount),
 		algosdk.encodeUint64(round),
-		algosdk.encodeUint64(79061945),
+		algosdk.encodeUint64(APP_ID),
 	];
 }

@@ -98,6 +98,8 @@ const S1Disconnect = styled.div`
 interface IHeaderProps {
 	killsession: () => unknown;
 	connected: boolean;
+	wc: boolean;
+	clearsession: () => unknown;
 	address: string;
 	chain: ChainType;
 	chainupdate: (newChain: ChainType) => unknown;
@@ -115,7 +117,7 @@ function stringToChainType(s: string): ChainType {
 }
 
 const Header = (props: IHeaderProps) => {
-	const { connected, address, killsession } = props;
+	const { connected, address, killsession, wc, clearsession } = props;
 	return (
 		<SHeader {...props}>
 			{connected && (
@@ -138,9 +140,15 @@ const Header = (props: IHeaderProps) => {
 						<SAddress>{ellipseAddress(address).slice(0, 9)}</SAddress>
 						<S1Disconnect>
 							<S2Disconnect />
-							<SDisconnect onClick={killsession}>
-								<SSpan>{'Disconnect'}</SSpan>
-							</SDisconnect>
+							{wc ? (
+								<SDisconnect onClick={killsession}>
+									<SSpan>{'Disconnect'}</SSpan>
+								</SDisconnect>
+							) : (
+								<SDisconnect onClick={clearsession}>
+									<SSpan>{'Disconnect.'}</SSpan>
+								</SDisconnect>
+							)}
 						</S1Disconnect>
 						<SAvatar>
 							<Avatar

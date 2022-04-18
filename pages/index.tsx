@@ -1,6 +1,6 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import React from 'react';
+import React, { Component } from 'react';
 import WalletConnect from '@walletconnect/client';
 import QRCodeModal from 'algorand-walletconnect-qrcode-modal';
 import { IInternalEvent } from '@walletconnect/types';
@@ -23,6 +23,7 @@ import Ripple3D from '../components/3Dripple';
 import Dashboard from '../components/Dashboard';
 //import WalletSelector from '../components/WalletSelector';
 import dynamic from 'next/dynamic';
+import { Accounts } from '@randlabs/myalgo-connect';
 const DynamicComponentWithNoSSR = dynamic(
 	() => import('../components/WalletSelector'),
 	{
@@ -55,6 +56,8 @@ interface IAppState {
 	result: IResult | null;
 	chain: ChainType;
 	assets: IAssetData[];
+	wc: boolean;
+	maccounts: Accounts[] | null;
 }
 
 const INITIAL_STATE: IAppState = {
@@ -71,6 +74,8 @@ const INITIAL_STATE: IAppState = {
 	result: null,
 	chain: ChainType.TestNet,
 	assets: [],
+	wc: false,
+	maccounts: null,
 };
 
 class Home extends React.Component<unknown, IAppState> {
@@ -83,10 +88,17 @@ class Home extends React.Component<unknown, IAppState> {
 		const bridge = 'https://bridge.walletconnect.org';
 
 		// create new connector
-		const connector = new WalletConnect({ bridge, qrcodeModal: QRCodeModal });
-
-		await this.setState({ connector });
-
+		const connector = new WalletConnect({
+			bridge,
+			qrcodeModal: QRCodeModal,
+		});
+		await this.setStateAsync({ connector, wc: true });
+		/* clientMeta: {
+			description: 'My description ',
+			url: 'http://localhost:3000',
+			icons: ['../public/favicon.ico'],
+			name: 'The name',
+		}, */
 		// check if already connected
 		if (!connector.connected) {
 			// create new session
@@ -156,7 +168,9 @@ class Home extends React.Component<unknown, IAppState> {
 		}
 		this.resetApp();
 	};
-
+	public clearsession = async () => {
+		await this.setStateAsync({ ...INITIAL_STATE });
+	};
 	public chainupdate = (newChain: ChainType) => {
 		this.setState({ chain: newChain }, this.getAccountAssets);
 	};
@@ -165,10 +179,15 @@ class Home extends React.Component<unknown, IAppState> {
 		await this.setState({ ...INITIAL_STATE });
 	};
 
+	setStateAsync(state: any) {
+		return new Promise((resolve) => {
+			this.setState(state, resolve);
+		});
+	}
 	public onConnect = async (payload: IInternalEvent) => {
 		const { accounts } = payload.params[0];
 		const address = accounts[0];
-		await this.setState({
+		await this.setStateAsync({
 			connected: true,
 			accounts,
 			address,
@@ -183,6 +202,8 @@ class Home extends React.Component<unknown, IAppState> {
 	public onSessionUpdate = async (accounts: string[]) => {
 		const address = accounts[0];
 		await this.setState({ accounts, address });
+		console.log('Got 8');
+
 		await this.getAccountAssets();
 	};
 
@@ -192,11 +213,10 @@ class Home extends React.Component<unknown, IAppState> {
 		try {
 			// get account balances
 			const assets = await apiGetAccountAssets(chain, address);
-
-			await this.setState({ fetching: false, address, assets });
+			await this.setStateAsync({ fetching: false, address, assets });
 		} catch (error) {
 			console.error(error);
-			await this.setState({ fetching: false });
+			await this.setStateAsync({ fetching: false });
 		}
 	};
 
@@ -411,11 +431,62 @@ class Home extends React.Component<unknown, IAppState> {
 		this.setState({ pendingRequest: true, showModal: true });
 		//await testNetClientalgod.accountApplicationInformation(address,index).do()
 	};
+	public connectToMyAlgo = async (accounts: any) => {
+		try {
+			const address: string = accounts[0]['address'];
+			const { chain } = this.state;
+
+			this.setState({
+				connected: true,
+				accounts,
+				address,
+				maccounts: accounts,
+			});
+			console.log(address);
+			try {
+				// get account balances
+				const assets = await apiGetAccountAssets(chain, address);
+				await this.setStateAsync({ fetching: false, address, assets });
+			} catch (error) {
+				console.error(error);
+				await this.setStateAsync({ fetching: false });
+			}
+		} catch (err) {
+			console.error(err);
+			await this.setStateAsync({ ...INITIAL_STATE });
+		}
+	};
 	public returnWallet = async (data: any) => {
 		if (!!data) {
 			console.log(data.connector.check());
-			console.log(await data.connector.connect());
-			console.log(data.connector.provider);
+			const accounts = await data.connector.connect();
+			const connector = data.connector.provider;
+			console.log(connector);
+
+			const a = data.connector;
+			console.log(a);
+			console.log(accounts);
+
+			if (a['provider']['protocol'] === 'wc') {
+				// subscribe to events, if walletconnect
+				//console.log(wprovider);
+				await this.walletConnectInit();
+			} else if (a['provider']['url']) {
+				const onClearResponse = (): void => {
+					this.setState({
+						connected: false,
+						accounts: [],
+						address: '',
+					});
+				};
+				console.log('should NOT be here walletconnect');
+				try {
+					await this.setStateAsync({ ...INITIAL_STATE });
+					await this.connectToMyAlgo(accounts);
+				} catch (err) {
+					console.error(err);
+				}
+			}
 		}
 	};
 	public render = () => {
@@ -430,6 +501,8 @@ class Home extends React.Component<unknown, IAppState> {
 			pendingRequest,
 			pendingSubmissions,
 			result,
+			wc,
+			maccounts,
 		} = this.state;
 
 		return (
@@ -448,27 +521,20 @@ class Home extends React.Component<unknown, IAppState> {
 						killsession={this.killsession}
 						chain={chain}
 						chainupdate={this.chainupdate}
+						wc={wc}
+						clearsession={this.clearsession}
 					/>
 					<header className='flex w-full p-5 justify-between text-sm text-gray-500'>
 						{!address && !assets.length ? (
 							<>
 								<div className='flex space-x-4 items-center'>
 									<p className='link'>About</p>
+								</div>
+								<div className='flex space-x-4 items-center'>
 									<DynamicComponentWithNoSSR
 										returnWallet={this.returnWallet}
 										wallets={['myalgowallet', 'walletconnect']}
 									/>
-								</div>
-								<div className='flex space-x-4 items-center'>
-									<div className='relative group'>
-										<div className='absolute -inset-0.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-md blur opacity-75 group-hover:opacity-100 transition duration-600 group-hover:duration-200 animate-tilt'></div>
-										<button
-											onClick={this.walletConnectInit}
-											className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-600 bg-black'
-										>
-											<span className='pr-2 text-gray-100'>Connect wallet</span>
-										</button>
-									</div>
 								</div>
 							</>
 						) : (
@@ -486,6 +552,8 @@ class Home extends React.Component<unknown, IAppState> {
 									connector={connector}
 									address={address}
 									chain={chain}
+									wc={wc}
+									maccounts={maccounts}
 								/>
 							</>
 						)}
