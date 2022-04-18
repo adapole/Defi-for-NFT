@@ -83,6 +83,7 @@ const ModalContent = (props: { closeModal: any }) => {
 			</div>
 			<p className=' text-sm  text-gray-500  text-center  pt-5'>
 				<a
+					rel='noopener noreferrer'
 					className=' hover:underline'
 					href='https://perawallet.app/'
 					target='_blank'
