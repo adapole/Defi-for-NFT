@@ -20,7 +20,7 @@ import { ScenarioReturnType, Scenario } from './scenarios';
 import Body from '../components/Body';
 import MultipleValueTextInput from '../components/MultipleValueTextInput';
 import Ripple3D from '../components/3Dripple';
-import Dashboard from '../components/Dashboard';
+//import Dashboard from '../components/Dashboard';
 //import WalletSelector from '../components/WalletSelector';
 import dynamic from 'next/dynamic';
 import { Accounts } from '@randlabs/myalgo-connect';
@@ -180,7 +180,7 @@ class Home extends React.Component<unknown, IAppState> {
 	};
 
 	setStateAsync(state: any) {
-		return new Promise((resolve) => {
+		return new Promise((resolve: any) => {
 			this.setState(state, resolve);
 		});
 	}
@@ -393,7 +393,7 @@ class Home extends React.Component<unknown, IAppState> {
 
 					console.log(`Transaction confirmed at round ${confirmedRound}`);
 				} catch (err) {
-					this.setState((prevState) => {
+					/* this.setState((prevState) => {
 						return {
 							pendingSubmissions: prevState.pendingSubmissions.map((v, i) => {
 								if (index === i) {
@@ -404,7 +404,8 @@ class Home extends React.Component<unknown, IAppState> {
 						};
 					});
 
-					console.error(`Error submitting transaction at index ${index}:`, err);
+					console.error(`Error submitting transaction at index ${index}:`, err); */
+					console.error(`Error submitting transaction at index`);
 				}
 			});
 		} catch (error) {
