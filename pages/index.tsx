@@ -30,6 +30,7 @@ import dynamic from 'next/dynamic';
 import MyAlgoConnect from '@randlabs/myalgo-connect';
 import Circle from '../components/Circle';
 import { APP_ID } from '../lib/helpers/constants';
+import FrontPage from '../components/FrontPage';
 const AppOptin = dynamic(() => import('../components/AppOptin'), {
 	ssr: false,
 });
@@ -603,7 +604,9 @@ class Home extends React.Component<unknown, IAppState> {
 					<div>
 						{/* Body */}
 						{!address && !assets.length ? (
-							<>{/* <Dashboard /> */}</>
+							<>
+								<FrontPage />
+							</>
 						) : (
 							<>
 								<Body
