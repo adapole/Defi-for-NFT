@@ -4,6 +4,7 @@ import MyAlgoConnect from '@randlabs/myalgo-connect';
 import WalletConnect from '@walletconnect/client';
 import algosdk from 'algosdk';
 import { create } from 'ipfs-http-client';
+import React from 'react';
 import { useEffect, useState } from 'react';
 import {
 	apiGetTxnParams,
@@ -74,12 +75,14 @@ export default function Faucets({
 	};
 
 	const dispenceNFTCOL = async () => {
-		const lg = await GetLogicSig('buff');
+		const lg = await GetLogicSig(
+			'QmRsvCLVzEkE3QEjkpHmKFuCRiLtN34d1sxs1xApcaJuhp'
+		);
 		console.log(lg);
 		setNFTCLogicSig(lg);
 	};
 	useEffect(() => {
-		//dispenceNFTCOL();
+		dispenceNFTCOL();
 	}, []);
 	const colAssetTransferTxn: Scenario = async (
 		chain: ChainType,
@@ -100,7 +103,7 @@ export default function Faucets({
 		const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
 			from: 'XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY',
 			to: address,
-			amount: 10000000,
+			amount: 10,
 			assetIndex,
 			note: new Uint8Array(Buffer.from('dispence NFT')),
 			suggestedParams,
@@ -481,44 +484,50 @@ export default function Faucets({
 						<div className='mt-1 mb-0 font-bold text-xl'>
 							{'Call Request Approved'}
 						</div>
-						{pendingSubmissions.map((submissionInfo, index) => {
-							const key = `${index}:${
-								typeof submissionInfo === 'number' ? submissionInfo : 'err'
-							}`;
-							const prefix = `Txn Group ${index}: `;
-							let content: string;
+						{React.Children.toArray(
+							pendingSubmissions.map((submissionInfo, index) => {
+								const key = `${index}:${
+									typeof submissionInfo === 'number' ? submissionInfo : 'err'
+								}`;
+								const prefix = `Txn Group ${index}: `;
+								let content: string;
 
-							if (submissionInfo === 0) {
-								content = 'Submitting...';
-							} else if (typeof submissionInfo === 'number') {
-								content = `Confirmed at round ${submissionInfo}`;
-							} else {
-								content =
-									'Rejected by network. See console for more information.';
-							}
+								if (submissionInfo === 0) {
+									content = 'Submitting...';
+								} else if (typeof submissionInfo === 'number') {
+									content = `Confirmed at round ${submissionInfo}`;
+								} else {
+									content =
+										'Rejected by network. See console for more information.';
+								}
 
-							return (
-								<>
-									<div className='flex flex-col text-left'>
-										{result.body.map((signedTxns, index) => (
-											<div className='w-full flex mt-1 mb-0' key={index}>
-												<div className='w-1/6 font-bold'>{`TxID: `}</div>
-												<div className='w-10/12 font-mono'>
-													{signedTxns.map((txn, txnIndex) => (
-														<div key={txnIndex}>
-															{!!txn?.txID && <p>{txn.txID}</p>}
+								return (
+									<>
+										<div className='flex flex-col text-left'>
+											{React.Children.toArray(
+												result.body.map((signedTxns, index) => (
+													<div className='w-full flex mt-1 mb-0' key={index}>
+														<div className='w-1/6 font-bold'>{`TxID: `}</div>
+														<div className='w-10/12 font-mono'>
+															{React.Children.toArray(
+																signedTxns.map((txn, txnIndex) => (
+																	<div key={txnIndex}>
+																		{!!txn?.txID && <p>{txn.txID}</p>}
+																	</div>
+																))
+															)}
 														</div>
-													))}
-												</div>
-											</div>
-										))}
-									</div>
-									<div className='mt-1 mb-0 font-bold text-xl' key={key}>
-										{content}
-									</div>
-								</>
-							);
-						})}
+													</div>
+												))
+											)}
+										</div>
+										<div className='mt-1 mb-0 font-bold text-xl' key={key}>
+											{content}
+										</div>
+									</>
+								);
+							})
+						)}
 					</div>
 				) : (
 					<div className='w-full relative break-words'>
