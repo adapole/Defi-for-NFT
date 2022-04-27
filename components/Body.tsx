@@ -1856,41 +1856,21 @@ export default function Body(props: {
 					{/* className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100' */}
 					{openTab === 2 && (
 						<>
-							<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-								<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-									<span
-										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-										onClick={(e) => {
-											e.preventDefault();
-											maximumAmountRepay(NFTSelected, 0, newAmount);
+							<div className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
+								<span className='pl-2 text-gray-500'>
+									<AsyncSelect
+										cacheOptions
+										loadOptions={loadOptions}
+										placeholder='Select NFT/Assets'
+										defaultOptions
+										onInputChange={handleInputChange}
+										onChange={async (option) => {
+											setSelectedNFT(option as iOption);
 										}}
-									>
-										MAX
-									</span>
-									<span className='pl-2 text-gray-500'>
-										<AsyncSelect
-											cacheOptions
-											loadOptions={loadOptions}
-											placeholder='Select NFT/Assets'
-											defaultOptions
-											onInputChange={handleInputChange}
-											onChange={async (option) => {
-												setSelectedNFT(option as iOption);
-											}}
-										/>
-									</span>
-								</div>
-								<input
-									type='number'
-									placeholder='loan amount'
-									className='flex-grow focus:outline-none bg-[#FAFAFA]'
-									value={borrowing}
-									onChange={(e) => {
-										setSwitcher(1);
-										setBorrowing(Number(e.target.value));
-									}}
-								/>
-							</form>
+										className='flex-grow focus:outline-none bg-[#FAFAFA]'
+									/>
+								</span>
+							</div>
 
 							<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
 								{Repayscenarios.map(({ name, scenario1 }) => (
