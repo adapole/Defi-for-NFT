@@ -3,7 +3,7 @@ import MyAlgoConnect from '@randlabs/myalgo-connect';
 const ConnectToMyAlgo = () => {
 	const myAlgoWallet = new MyAlgoConnect({ disableLedgerNano: false });
 	const settings = {
-		shouldSelectOneAccount: false,
+		shouldSelectOneAccount: true,
 		openManager: false,
 	};
 

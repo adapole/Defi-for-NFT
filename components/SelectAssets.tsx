@@ -157,7 +157,7 @@ const SelectAssets = (props: { assetid: number }) => {
 				onItemDeleted={() => console.log(`Item Deleted: `)}
 				//label='Asset'
 				name='item-input'
-				placeholder='Allowed assetId; separate them with COMMA or ENTER.'
+				placeholder='Allowed NFTs'
 				values={[assetid.toString()]}
 			/>
 			{/* Component S - {AssetsContext.countState}

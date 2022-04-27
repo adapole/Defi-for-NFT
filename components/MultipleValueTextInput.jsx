@@ -128,7 +128,7 @@ class MultipleValueTextInput extends Component {
 				handleItemRemove={this.handleItemRemove}
 			/>
 		));
-		console.log(this.context);
+		//console.log(this.context);
 		return (
 			<div>
 				<label

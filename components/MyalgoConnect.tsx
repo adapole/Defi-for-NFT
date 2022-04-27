@@ -1,15 +1,17 @@
 import MyAlgoConnect from '@randlabs/myalgo-connect';
-import algosdk from 'algosdk';
+import algosdk, { Transaction } from 'algosdk';
 import { useState, useCallback, useEffect, useContext } from 'react';
 import {
 	apiGetTxnParams,
 	ChainType,
 	testNetClientalgod,
 } from '../lib/helpers/api';
-//import contractJSON from '../public/d4t.json';
+//import {name,networks,methods} from '../public/d4t.json';
 import { create } from 'ipfs-http-client';
 import { assetsContext } from '../lib/helpers/assetsContext';
-import { APP_ID, DUSD, USDC } from '../lib/helpers/constants';
+import { APP_ID, NFTColl, USDC } from '../lib/helpers/constants';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,
@@ -92,6 +94,14 @@ export default function MyalgoConnect(props: {
 		console.log(lsa);
 
 		try {
+			toast.info(`Uploading to IPFS...`, {
+				position: 'top-right',
+				autoClose: false,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
 			const added = await ipfs.add(lsa);
 			const url = `https://ipfs.infura.io/ipfs/${added.path}`;
 			updateFileUrl(url);
@@ -102,6 +112,23 @@ export default function MyalgoConnect(props: {
 
 			//console.log(JSON.stringify(chunks));
 			setHashIpfs(ipfsPath);
+
+			toast.info(`IPFS hash: ${ipfsPath}`, {
+				position: 'top-right',
+				autoClose: false,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
+			toast.success(`Uploaded to IPFS🎉`, {
+				position: 'top-right',
+				autoClose: 8000,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
 			//console.log(hashVal);
 			/* const chunks = [];
 			for await (const chunk of ipfs.cat(ipfsPath)) {
@@ -109,6 +136,14 @@ export default function MyalgoConnect(props: {
 			}
 			console.log(chunks); */
 		} catch (error) {
+			toast.error(`Failed to upload LogicSig`, {
+				position: 'top-right',
+				autoClose: 8000,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
 			console.log('Error uploading hash: ', error);
 		}
 		//const hash = new Uint8Array(Buffer.from('ipfs-here'));
@@ -128,7 +163,7 @@ export default function MyalgoConnect(props: {
 	}
 	const stake = async () => {
 		const suggestedParams = await apiGetTxnParams(ChainType.TestNet);
-		const assetID = algosdk.encodeUint64(DUSD);
+		const assetID = algosdk.encodeUint64(NFTColl);
 		const amount64 = algosdk.encodeUint64(Number(newAmount));
 		const validRound64 = algosdk.encodeUint64(validRound);
 		/* 	const lsaHashFull = new TextDecoder().decode(hashVal);
@@ -136,9 +171,10 @@ export default function MyalgoConnect(props: {
 		const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8)); */
 		console.log(hashIpfs);
 		const ipfsLsaHash = Uint8Array.from(Buffer.from(hashIpfs));
-		console.log(APP_ID);
+
+		/*		const contractJSON = {name,networks,methods}
 		// since they happen to be the same
-		/* 
+		
 		// Parse the json file into an object, pass it to create an ABIContract object
 	const contract = new algosdk.ABIContract(JSON.parse(contractJSON.toString()));
 	// Utility function to return an ABIMethod by its name
@@ -149,21 +185,37 @@ export default function MyalgoConnect(props: {
 		if (m === undefined) throw Error('Method undefined: ' + name);
 		return m;
 	}
+	const atcmyAlgoConnect = new MyAlgoConnect();
+		//const signedTxn = await atcmyAlgoConnect.signTransaction(txn.toByte());
 	const commonParams = {
 	appID:contract.networks["default"].appID,
 	sender:result,
 	suggestedParams:suggestedParams,
 	signer: algosdk.makeBasicAccountTransactionSigner(AssetsContext.maccounts)
 }
-const comp = new algosdk.AtomicTransactionComposer()
+const atc = new algosdk.AtomicTransactionComposer()
 const xids = algosdk.encodeUint64(77141623);//encodeToUint64(2)
 const aamt = algosdk.encodeUint64(Number(newAmount));
 const lvr = algosdk.encodeUint64(validRound);
 const lsa = Uint8Array.from(Buffer.from(hashIpfs));
 // Simple ABI Calls with standard arguments, return type
-comp.addMethodCall({
+atc.addMethodCall({
 	method: getMethodByName("earn"), methodArgs: [xids,aamt,lvr,lsa], ...commonParams
-}) */
+}) 
+// Create a transaction
+const ptxn = new Transaction({
+    from: AssetsContext.maccounts,
+    to: AssetsContext.maccounts,
+    amount: 10000,
+    ...suggestedParams
+})
+
+// Construct TransactionWithSigner
+const tws = {txn: ptxn, signer: atcmyAlgoConnect.signTransaction}
+
+// Pass TransactionWithSigner to ATC
+atc.addTransaction(tws)
+*/
 		const txn = algosdk.makeApplicationNoOpTxnFromObject({
 			from: result,
 			appIndex: APP_ID,
@@ -181,6 +233,14 @@ comp.addMethodCall({
 		const signedTxn = await myAlgoConnect.signTransaction(txn.toByte());
 		console.log(signedTxn);
 		let txId = txn.txID().toString();
+		toast.info(`Transaction ${txId}`, {
+			position: 'top-right',
+			autoClose: false,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+		});
 		// Submit the transaction
 		await testNetClientalgod.sendRawTransaction(signedTxn.blob).do();
 
@@ -190,6 +250,14 @@ comp.addMethodCall({
 			txId,
 			4
 		);
+		toast.success(`Confirmed in round ${confirmedTxn['confirmed-round']}`, {
+			position: 'top-right',
+			autoClose: false,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+		});
 		//Get the completed Transaction
 		console.log(
 			'Transaction ' +
@@ -216,6 +284,15 @@ comp.addMethodCall({
 
 	return (
 		<>
+			<ToastContainer
+				hideProgressBar={false}
+				newestOnTop
+				closeOnClick
+				rtl={false}
+				pauseOnFocusLoss
+				draggable
+				pauseOnHover
+			/>
 			<button
 				onClick={(e) => {
 					e.preventDefault();
@@ -223,7 +300,7 @@ comp.addMethodCall({
 				}}
 				className='btn'
 			>
-				Stake
+				Stake - Promise
 			</button>
 			<button
 				onClick={(e) => {
@@ -233,16 +310,6 @@ comp.addMethodCall({
 				className='btn'
 			>
 				Logic Sign
-			</button>
-			<button
-				onClick={(e) => {
-					e.preventDefault();
-					//connect();
-					AssetsContext.countDispatch('increment');
-				}}
-				className='btn'
-			>
-				{AssetsContext.countState}
 			</button>
 		</>
 	);

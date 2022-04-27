@@ -47,9 +47,10 @@ const BalanceAsset = (props: { asset: IAssetData; bodyamount: string }) => {
 				)}
 				{!bodyamount && (
 					<div className='flex' key={items}>
-						{`${formatBigNumWithDecimals(asset.amount, asset.decimals)} ${
-							asset.unitName || 'units'
-						}`}
+						{`${formatBigNumWithDecimals(
+							BigInt(asset.amount),
+							asset.decimals
+						)} ${asset.unitName || 'units'}`}
 					</div>
 				)}
 			</div>

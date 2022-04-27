@@ -11,6 +11,8 @@ import {
 	apiGetTxnParams,
 	apiSubmitTransactions,
 	ChainType,
+	testNetClientalgod,
+	testNetClientindexer,
 } from '../lib/helpers/api';
 import {
 	IAssetData,
@@ -21,14 +23,41 @@ import Modal from '../components/Modal';
 import Loader from '../components/Loader';
 import Header from '../components/Header';
 import { ScenarioReturnType, Scenario } from '../lib/helpers/scenarios';
-import Body from '../components/Body';
-import MultipleValueTextInput from '../components/MultipleValueTextInput';
-import Ripple3D from '../components/3Dripple';
+
 //import Dashboard from '../components/Dashboard';
 //import WalletSelector from '../components/WalletSelector';
 import dynamic from 'next/dynamic';
+import MyAlgoConnect from '@randlabs/myalgo-connect';
+import Circle from '../components/Circle';
+import { APP_ID } from '../lib/helpers/constants';
+const AppOptin = dynamic(() => import('../components/AppOptin'), {
+	ssr: false,
+});
 //import { Accounts } from '@randlabs/myalgo-connect';
+const Body = dynamic(() => import('../components/Body'), {
+	ssr: false,
+});
 
+/* export async function getServerSideProps() {
+	const post = await prisma.post.create({
+		data: {
+			title: 'My first post',
+			body: 'My first post body',
+		},
+	});
+	console.log(post);
+	return null;
+} */
+async function savePost(post: any) {
+	const response = await fetch('/api/posts', {
+		method: 'POST',
+		body: JSON.stringify(post),
+	});
+	if (!response.ok) {
+		throw new Error(response.statusText);
+	}
+	return await response.json();
+}
 interface IResult {
 	method: string;
 	body: Array<
@@ -55,7 +84,7 @@ interface IAppState {
 	chain: ChainType;
 	assets: IAssetData[];
 	wc: boolean;
-	//maccounts: Accounts[] | null;
+	mconnector: MyAlgoConnect | null;
 }
 
 const INITIAL_STATE: IAppState = {
@@ -73,7 +102,7 @@ const INITIAL_STATE: IAppState = {
 	chain: ChainType.TestNet,
 	assets: [],
 	wc: false,
-	//maccounts: null,
+	mconnector: null,
 };
 
 class Home extends React.Component<unknown, IAppState> {
@@ -110,7 +139,7 @@ class Home extends React.Component<unknown, IAppState> {
 
 		// subscribe to events
 		await this.subscribeToEvents();
-		//await this.JinaAppOptin();
+		await this.JinaAppOptin();
 	};
 	public subscribeToEvents = () => {
 		const { connector } = this.state;
@@ -181,7 +210,14 @@ class Home extends React.Component<unknown, IAppState> {
 	public resetApp = async () => {
 		await this.setState({ ...INITIAL_STATE });
 	};
-
+	public checkOptin = async () => {
+		const { address } = this.state;
+		const accountInfo = await testNetClientindexer
+			.lookupAccountAppLocalStates(address)
+			.do();
+		//console.log(accountInfo['apps-local-states']);
+		return accountInfo['apps-local-states'];
+	};
 	setStateAsync(state: any) {
 		return new Promise((resolve: any) => {
 			this.setState(state, resolve);
@@ -428,11 +464,28 @@ class Home extends React.Component<unknown, IAppState> {
 		if (!connector) {
 			return;
 		}
+		const applications = await this.checkOptin();
+		if (applications === null) {
+			console.log('Optin');
+			// open Modal and prompt to optin, if not already
+			this.toggleModal();
 
-		// open Modal and prompt to optin, if not already
-		this.toggleModal();
+			this.setState({ pendingRequest: true, showModal: true });
 
-		this.setState({ pendingRequest: true, showModal: true });
+			return;
+		}
+		for (let i = 0; i < applications.length; i++) {
+			if (applications[i]['id'] === APP_ID && !applications[i]['deleted']) {
+				console.log('Opted in already');
+				return;
+			}
+			console.log('Opt in...');
+			// open Modal and prompt to optin, if not already
+			this.toggleModal();
+
+			this.setState({ pendingRequest: true, showModal: true });
+		}
+
 		//await testNetClientalgod.accountApplicationInformation(address,index).do()
 	};
 	public connectToMyAlgo = async (accounts: any) => {
@@ -444,7 +497,6 @@ class Home extends React.Component<unknown, IAppState> {
 				connected: true,
 				accounts,
 				address,
-				//maccounts: accounts,
 			});
 			console.log(address);
 			try {
@@ -485,7 +537,10 @@ class Home extends React.Component<unknown, IAppState> {
 				};
 				console.log('should NOT be here walletconnect');
 				try {
-					await this.setStateAsync({ ...INITIAL_STATE });
+					await this.setStateAsync({
+						...INITIAL_STATE,
+						mconnector: data.connector,
+					});
 					await this.connectToMyAlgo(accounts);
 				} catch (err) {
 					console.error(err);
@@ -506,7 +561,7 @@ class Home extends React.Component<unknown, IAppState> {
 			pendingSubmissions,
 			result,
 			wc,
-			//maccounts,
+			mconnector,
 		} = this.state;
 
 		return (
@@ -557,93 +612,106 @@ class Home extends React.Component<unknown, IAppState> {
 									address={address}
 									chain={chain}
 									wc={wc}
+									mconnector={mconnector}
 									//maccounts={maccounts}
 								/>
 							</>
 						)}
 					</div>
 				</div>
-				<Modal show={showModal} toggleModal={this.toggleModal}>
-					{pendingRequest ? (
-						<div className='w-full relative break-words'>
-							<div className='mt-1 mb-0 font-bold text-xl'>
-								{'OptIn To Jina-App'}
+				{wc ? (
+					<Modal show={showModal} toggleModal={this.toggleModal}>
+						{pendingRequest ? (
+							<div className='w-full relative break-words'>
+								<div className='mt-1 mb-0 font-bold text-xl'>
+									{'OptIn To App'}
+								</div>
+								<div className='h-full min-h-2 flex flex-col justify-center items-center break-words'>
+									<Loader />
+									{/* Click to activate optin */}
+									{this.scenarios.map(({ name, scenario }) => (
+										<button
+											className='relative mt-6 px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100'
+											key={name}
+											onClick={(e) => {
+												e.preventDefault();
+												this.signApp(scenario);
+											}}
+										>
+											{name}
+										</button>
+									))}
+									<p className='mt-4'>
+										{'Approve or reject request using your wallet'}
+									</p>
+									<p className=' mt-0.5 text-red-500'>
+										{'OptIn, only If you have not done so before'}
+									</p>
+								</div>
 							</div>
-							<div className='h-full min-h-2 flex flex-col justify-center items-center break-words'>
-								<Loader />
-								{/* Click to activate optin */}
-								{this.scenarios.map(({ name, scenario }) => (
-									<button
-										className='relative mt-6 px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100'
-										key={name}
-										onClick={(e) => {
-											e.preventDefault();
-											this.signApp(scenario);
-										}}
-									>
-										{name}
-									</button>
-								))}
-								<p className='mt-4'>
-									{'Approve or reject request using your wallet'}
-								</p>
-								<p className=' mt-0.5 text-red-500'>
-									{'OptIn, only If you have not done so before'}
-								</p>
-							</div>
-						</div>
-					) : result ? (
-						<div className='w-full relative break-words'>
-							<div className='mt-1 mb-0 font-bold text-xl'>
-								{'Call Request Approved'}
-							</div>
-							{pendingSubmissions.map((submissionInfo, index) => {
-								const key = `${index}:${
-									typeof submissionInfo === 'number' ? submissionInfo : 'err'
-								}`;
-								const prefix = `Txn Group ${index}: `;
-								let content: string;
+						) : result ? (
+							<div className='w-full relative break-words'>
+								<div className='mt-1 mb-0 font-bold text-xl'>
+									{'Call Request Approved'}
+								</div>
+								{pendingSubmissions.map((submissionInfo, index) => {
+									const key = `${index}:${
+										typeof submissionInfo === 'number' ? submissionInfo : 'err'
+									}`;
+									const prefix = `Txn Group ${index}: `;
+									let content: string;
 
-								if (submissionInfo === 0) {
-									content = 'Submitting...';
-								} else if (typeof submissionInfo === 'number') {
-									content = `Confirmed at round ${submissionInfo}`;
-								} else {
-									content =
-										'Rejected by network. See console for more information.';
-								}
+									if (submissionInfo === 0) {
+										content = 'Submitting...';
+									} else if (typeof submissionInfo === 'number') {
+										content = `Confirmed at round ${submissionInfo}`;
+									} else {
+										content =
+											'Rejected by network. See console for more information.';
+									}
 
-								return (
-									<>
-										<div className='flex flex-col text-left'>
-											{result.body.map((signedTxns, index) => (
-												<div className='w-full flex mt-1 mb-0' key={index}>
-													<div className='w-1/6 font-bold'>{`TxID: `}</div>
-													<div className='w-10/12 font-mono'>
-														{signedTxns.map((txn, txnIndex) => (
-															<div key={txnIndex}>
-																{!!txn?.txID && <p>{txn.txID}</p>}
-															</div>
-														))}
+									return (
+										<>
+											<div className='flex flex-col text-left'>
+												{result.body.map((signedTxns, index) => (
+													<div className='w-full flex mt-1 mb-0' key={index}>
+														<div className='w-1/6 font-bold'>{`TxID: `}</div>
+														<div className='w-10/12 font-mono'>
+															{signedTxns.map((txn, txnIndex) => (
+																<div key={txnIndex}>
+																	{!!txn?.txID && <p>{txn.txID}</p>}
+																</div>
+															))}
+														</div>
 													</div>
-												</div>
-											))}
-										</div>
-										<div className='mt-1 mb-0 font-bold text-xl' key={key}>
-											{content}
-										</div>
-									</>
-								);
-							})}
-						</div>
-					) : (
-						<div className='w-full relative break-words'>
-							<div className='mt-1 mb-0 font-bold text-xl'>
-								{'Call Request Rejected'}
+												))}
+											</div>
+											<div className='mt-1 mb-0 font-bold text-xl' key={key}>
+												{content}
+											</div>
+										</>
+									);
+								})}
 							</div>
-						</div>
-					)}
-				</Modal>
+						) : (
+							<div className='w-full relative break-words'>
+								<div className='mt-1 mb-0 font-bold text-xl'>
+									{'Call Request Rejected'}
+								</div>
+							</div>
+						)}
+					</Modal>
+				) : mconnector ? (
+					<AppOptin
+						connector={connector}
+						address={address}
+						chain={chain}
+						wc={wc}
+						mconnector={mconnector}
+					/>
+				) : (
+					<></>
+				)}
 			</div>
 		);
 	};

@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  body  String
+}
+
+type Payments {
+  //id             String  @default(cuid()) @db.ObjectId
+  paymentid      String
+  status         String?
+  transferstatus String?
+  transactionid  String?
+  walletid       String?
+}
+
+model Users {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  algowallet String     @unique
+  walletid   String[]
+  cardid     String[]
+  payments   Payments[]
+  //payments    Payment? @relation(fields: [payment_id], references: [id])
+  //payment_id  String?
+}
+
+model Subscription {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  SubscribeURL String?
+}

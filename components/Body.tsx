@@ -1,6 +1,12 @@
 import Head from 'next/head';
-import Select from 'react-select';
-import { CheckCircleIcon, XIcon } from '@heroicons/react/solid';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import {
+	ChevronLeftIcon,
+	ChevronDoubleRightIcon,
+	XIcon,
+	ChevronRightIcon,
+} from '@heroicons/react/solid';
 import React, {
 	useCallback,
 	useEffect,
@@ -20,13 +26,13 @@ import {
 	ScenarioReturnType,
 	Scenario,
 	AssetTransactionType,
+	IScenarioTxn,
 } from '../lib/helpers/scenarios';
 import {
 	ChainType,
 	apiGetTxnParams,
 	apiSubmitTransactions,
 	apiGetAccountAssets,
-	tealProgramMake,
 	tealProgramDispence,
 	testNetClientindexer,
 	testNetClientalgod,
@@ -40,7 +46,18 @@ import SelectAssets from './SelectAssets';
 import dynamic from 'next/dynamic';
 import { create } from 'ipfs-http-client';
 import { assetsContext } from '../lib/helpers/assetsContext';
-//import { Accounts } from '@randlabs/myalgo-connect';
+import {
+	APP_ID,
+	DUSD,
+	LiquidateID,
+	NFTColl,
+	USDC,
+} from '../lib/helpers/constants';
+import MyAlgoConnect from '@randlabs/myalgo-connect';
+import Faucets from './Faucets';
+import Fiat from './Fiat';
+import AsyncSelect from 'react-select/async';
+
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
 });
@@ -149,22 +166,37 @@ const singleAppOptIn: Scenario = async (
 	const txnsToSign = [{ txn }];
 	return [txnsToSign];
 };
+interface iOption {
+	label: string;
+	value: string;
+}
 
+export function replacer(key: any, value: any) {
+	if (key === 'amount') {
+		return value.toString();
+	}
+	return value;
+}
 export default function Body(props: {
 	assets: IAssetData[];
 	connector: WalletConnect | null;
 	address: string;
 	chain: ChainType;
 	wc: boolean;
-	//maccounts: Accounts[] | null;
+	mconnector: MyAlgoConnect | null;
 }) {
-	const { assets, connector, address, chain, wc } = props;
+	const { assets, connector, address, chain, wc, mconnector } = props;
 	//console.log(lsa);
 	const [makeLogicSig, setMakeLogicSig] = useState(new Uint8Array());
 	const [borrowLogicSig, setBorrowLogicSig] = useState(new Uint8Array());
 	const [addressLogicSig, setAddressLogicSig] = useState('');
 	const [switcher, setSwitcher] = useState(0);
 	const [jusdLogicSig, setJusdLogicSig] = useState(new Uint8Array());
+	const [selectedNFT, setSelectedNFT] = useState<iOption>({
+		value:
+			'{"id":77141623,"amount":0,"creator":"XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY","frozen":false,"decimals":0,"name":"Lofty jina property","unitName":"LFT-jina"}',
+		label: 'LFT-jina',
+	});
 
 	function writeUserData(
 		userId: Number,
@@ -231,26 +263,38 @@ export default function Body(props: {
 		protocol: 'https',
 	});
 	const borrowIndexer = async (assetid: Number, amount: number) => {
+		toast.info('Looking for Lenders...', {
+			position: 'top-right',
+			autoClose: false,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+		});
 		const accountsArray = await testNetClientindexer
 			.searchAccounts()
-			.applicationID(79061945)
+			.applicationID(APP_ID)
 			.do();
 
 		console.log(accountsArray.accounts);
 
 		let numAccounts = accountsArray.accounts.length;
+
+		let foundId: boolean = false;
+		let proceedToBorrow: boolean = false;
 		outer: for (let i = 0; i < numAccounts; i++) {
 			let add = accountsArray.accounts[i]['address'];
 
 			let accountInfoResponse = await testNetClientindexer
 				.lookupAccountAppLocalStates(add)
-				.applicationID(79061945)
+				.applicationID(APP_ID)
 				.do();
+
 			if (
 				accountInfoResponse['apps-local-states'][0]['key-value'] != undefined
 			) {
 				console.log("User's local state: " + add);
-				let foundId: boolean = false;
+
 				for (
 					let n = 0;
 					n < accountInfoResponse['apps-local-states'][0]['key-value'].length;
@@ -289,7 +333,7 @@ export default function Body(props: {
 					}
 					let buff = Buffer.from(ky, 'base64').toString('utf-8');
 					console.log(buff);
-					let proceedToBorrow: boolean = false;
+
 					if (foundId) {
 						// Filter by lvr and aamt
 
@@ -359,7 +403,15 @@ export default function Body(props: {
 									console.log(lg);
 									setBorrowLogicSig(lg);
 									setAddressLogicSig(add);
-
+									toast.dismiss();
+									toast.success('Found Lender!', {
+										position: 'top-right',
+										autoClose: 5000,
+										hideProgressBar: false,
+										closeOnClick: true,
+										pauseOnHover: true,
+										draggable: true,
+									});
 									break outer;
 								}
 							}
@@ -368,6 +420,16 @@ export default function Body(props: {
 					}
 				}
 			}
+		}
+		if (!proceedToBorrow) {
+			toast.error('No lenders found! Try again', {
+				position: 'top-right',
+				autoClose: false,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
 		}
 	};
 	/**
@@ -395,16 +457,11 @@ export default function Body(props: {
 		address: string
 	): Promise<ScenarioReturnType> => {
 		const suggestedParams = await apiGetTxnParams(chain);
-		const LFTJinaID = 77141623;
-		const JusdID = 79077841;
-		const liquidateID = 79206825;
-		const USDCID = 10458941;
-		const appIndex = 79061945;
 
-		const borrowLogic = await borrowGetLogic(
+		/* const borrowLogic = await borrowGetLogic(
 			'QmaGYNdQaj2cygMxxDQqJie3vfAJzCa1VBstReKY1ZuYjK'
 		);
-		console.log(borrowLogic);
+		console.log(borrowLogic); */
 
 		const amountborrowing = Number(Math.floor(borrowing).toString() + '000000'); //Math.floor(borrowAmount(userInput)).toString() + '000000'
 		console.log(amountborrowing);
@@ -415,7 +472,7 @@ export default function Body(props: {
 		//const bigIntValUserInput = Number(userInput);
 		//const amountUserInput = Number(bigIntValUserInput.toString() + '000000');
 
-		const assetID = algosdk.encodeUint64(LFTJinaID);
+		const assetID = algosdk.encodeUint64(NFTSelected.id);
 		//const amount64 = algosdk.encodeUint64(1);
 		const Useramount64 = algosdk.encodeUint64(userInput);
 		// change appIndex to BigEndian
@@ -423,10 +480,10 @@ export default function Body(props: {
 		suggestedParams.fee = 4000;
 		const txn1 = algosdk.makeApplicationNoOpTxnFromObject({
 			from: address,
-			appIndex,
+			appIndex: APP_ID,
 			appArgs: [Uint8Array.from(Buffer.from('borrow')), assetID, Useramount64],
-			foreignApps: [liquidateID],
-			foreignAssets: [LFTJinaID, JusdID],
+			foreignApps: [LiquidateID],
+			foreignAssets: [NFTSelected.id, DUSD],
 			accounts: [addressLogicSig], //Lender address
 			suggestedParams,
 		});
@@ -435,10 +492,9 @@ export default function Body(props: {
 			from: addressLogicSig, //Lender address
 			to: address,
 			amount: amountborrowing,
-			assetIndex: USDCID,
+			assetIndex: USDC,
 			suggestedParams,
 		});
-
 		const txnsToSign = [{ txn: txn1 }, { txn: txn2, signers: [] }];
 		algosdk.assignGroupID(txnsToSign.map((toSign) => toSign.txn));
 
@@ -484,9 +540,9 @@ export default function Body(props: {
 		address: string
 	): Promise<ScenarioReturnType> => {
 		const suggestedParams = await apiGetTxnParams(chain);
-		const LFTJinaID = 77141623;
-		const USDCID = 10458941;
-		const appIndex = 79061945;
+
+		const USDCID = USDC;
+		const appIndex = APP_ID;
 
 		const bigIntVal = Number(userInput);
 		const amount = Number(bigIntVal.toString() + '000000');
@@ -497,7 +553,7 @@ export default function Body(props: {
 			from: address,
 			appIndex,
 			appArgs: [Uint8Array.from(Buffer.from('repay'))],
-			foreignAssets: [LFTJinaID],
+			foreignAssets: [NFTSelected.id],
 			suggestedParams,
 		});
 		suggestedParams.fee = 0;
@@ -581,9 +637,7 @@ export default function Body(props: {
 	function signTxnLogicSigWithTestAccount(
 		txn: algosdk.Transaction
 	): Uint8Array {
-		const sender = 'XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY';
-
-		if (switcher === 0) {
+		/* if (switcher === 0) {
 			let lsa = selectLogicSigDispence(txn);
 			if (txn.assetIndex === 77141623) {
 				let lsig = algosdk.LogicSigAccount.fromByte(lsa);
@@ -596,10 +650,10 @@ export default function Body(props: {
 				console.log(signedTxn.txID);
 				return signedTxn.blob;
 			}
-		}
+		} */
 
 		if (switcher === 1) {
-			let lsa = borrowLogicSig;
+			//let lsa = borrowLogicSig;
 			//let lsa = makeLogicSig;
 			console.log('Final' + borrowLogicSig);
 			let lsig = algosdk.logicSigFromByte(borrowLogicSig);
@@ -611,10 +665,20 @@ export default function Body(props: {
 		/*
 		 */
 
-		throw new Error(
-			`Cannot sign transaction from unknown test account: ${sender}`
-		);
+		throw new Error(`Cannot sign transaction from account`);
 	}
+	const extractValues = JSON.parse(selectedNFT.value);
+	const NFTSelected = assets.find(
+		(asset: IAssetData) => asset && asset.id === extractValues.id
+	) || {
+		id: extractValues.id,
+		amount: extractValues.amount,
+		creator: extractValues.creator,
+		frozen: extractValues.frozen,
+		decimals: extractValues.decimals,
+		name: extractValues.name,
+		unitName: extractValues.unitName,
+	};
 	const LOFTYtoken = assets.find(
 		(asset: IAssetData) => asset && asset.id === 77141623
 	) || {
@@ -675,7 +739,12 @@ export default function Body(props: {
 		focus();
 		if (!bodyamounts) {
 			setUserInput(
-				Number(formatBigNumWithDecimals(tokenAsset.amount, tokenAsset.decimals))
+				Number(
+					formatBigNumWithDecimals(
+						BigInt(tokenAsset.amount),
+						tokenAsset.decimals
+					)
+				)
 			);
 			return;
 		}
@@ -683,12 +752,32 @@ export default function Body(props: {
 		await LatestValue(address, chain, tokenType);
 		return;
 	}
+	async function maximumAmountRepay(
+		tokenAsset: IAssetData,
+		tokenType: number,
+		bodyamounts: string
+	) {
+		focus();
+		if (!bodyamounts) {
+			setBorrowing(
+				Number(
+					formatBigNumWithDecimals(
+						BigInt(tokenAsset.amount),
+						tokenAsset.decimals
+					)
+				)
+			);
+			return;
+		}
+		setBorrowing(Number(bodyamounts));
+		return;
+	}
 	function Borrow(e: any) {
 		e.preventDefault();
 		console.log('Borrow function run!');
 		// Check indexer
 		if (!connector) return;
-		signTxnScenario(singleAppOptIn, connector, address, chain, 0);
+		//signTxnScenario(singleAppOptIn, connector, address, chain, 0);
 	}
 	function increaseBorrow(e: any) {
 		e.preventDefault();
@@ -748,6 +837,7 @@ export default function Body(props: {
 	}
 
 	const [openTab, setOpenTab] = React.useState(1);
+	const [openPage, setOpenPage] = useState(1);
 	const [showModal, setShowModal] = useState(false);
 	const [result, setResult] = useState<IResult | null>(null);
 	const [pendingRequest, setPendingRequest] = useState(false);
@@ -769,24 +859,24 @@ export default function Body(props: {
 		try {
 			const Myassets = await apiGetAccountAssets(chain, address);
 			if (tokenType === 0) {
-				const LOFTYtoken1 = Myassets.find(
-					(asset: IAssetData) => asset && asset.id === 77141623
+				const NFTSelected1 = Myassets.find(
+					(asset: IAssetData) => asset && asset.id === extractValues.id
 				) || {
-					id: 77141623,
-					amount: BigInt(0),
-					creator: '',
-					frozen: false,
-					decimals: 0,
-					name: 'Lofty jina property',
-					unitName: 'LFT-jina',
+					id: extractValues.id,
+					amount: extractValues.amount,
+					creator: extractValues.creator,
+					frozen: extractValues.frozen,
+					decimals: extractValues.decimals,
+					name: extractValues.name,
+					unitName: extractValues.unitName,
 				};
-				if (!LOFTYtoken1) {
+				if (!NFTSelected1) {
 					return;
 				}
 				console.log('Found LFT!');
 				const Myval = formatBigNumWithDecimals(
-					LOFTYtoken1.amount,
-					LOFTYtoken1.decimals
+					BigInt(NFTSelected1.amount),
+					NFTSelected1.decimals
 				);
 				console.log('New Value: ' + Myval);
 				setNewAmount(Myval);
@@ -809,7 +899,7 @@ export default function Body(props: {
 				}
 				console.log('Found USDC!');
 				const Myval = formatBigNumWithDecimals(
-					USDCtoken1.amount,
+					BigInt(USDCtoken1.amount),
 					USDCtoken1.decimals
 				);
 				console.log('New Value: ' + Myval);
@@ -833,7 +923,7 @@ export default function Body(props: {
 				}
 				console.log('Found JUSD!');
 				const Myval = formatBigNumWithDecimals(
-					JINAtoken1.amount,
+					BigInt(JINAtoken1.amount),
 					JINAtoken1.decimals
 				);
 				console.log('New Value: ' + Myval);
@@ -1214,6 +1304,91 @@ export default function Body(props: {
 			setResult(null);
 		}
 	}
+	function filterByID(item: any) {
+		if (item.txn && item.signers === undefined) {
+			return true;
+		} //else if(item.signers === []) {return false}
+
+		return false;
+	}
+	async function myAlgoSign(
+		scenario1: Scenario,
+		mconnector: MyAlgoConnect,
+		address: string,
+		chain: ChainType,
+		tokenType: Number
+	) {
+		if (!mconnector) {
+			console.log('No connector found!');
+			return;
+		}
+		try {
+			const txnsToSign = await scenario1(chain, address);
+			console.log(txnsToSign);
+			console.log('MyAlgo Signing');
+			// open modal
+			toggleModal();
+			setPendingRequest(true);
+
+			const flatTxns = txnsToSign.reduce((acc, val) => acc.concat(val), []);
+			console.log('Flatened txn');
+			const signedPartialTxns: Array<Array<Uint8Array | null>> = txnsToSign.map(
+				() => []
+			);
+
+			// sign transaction
+			const myAlgoConnect = new MyAlgoConnect();
+
+			const filtered = flatTxns.filter(filterByID);
+			console.log(filtered);
+			const txnsArray = filtered.map((a) => a.txn);
+			console.log(txnsArray);
+			let txIdd;
+			txnsArray.map((txn) => (txIdd = txn.txID().toString()));
+			const signedTxn = await myAlgoConnect.signTransaction(
+				txnsArray.map((txn) => txn.toByte())
+			);
+			console.log('Raw signed response:', signedTxn);
+
+			const signedTxns: Uint8Array[][] = signedPartialTxns.map(
+				(signedPartialTxnsInternal, group) => {
+					return signedPartialTxnsInternal.map((stxn, groupIndex) => {
+						if (stxn) {
+							return stxn;
+						}
+
+						return signTxnLogicSigWithTestAccount(
+							txnsToSign[group][groupIndex].txn
+						);
+					});
+				}
+			);
+			// Start Submitting
+			setPendingRequest(false);
+			//setResult(formattedResult);
+
+			setPendingSubmissions(signedTxn.map(() => 0) as []);
+			// Submit the transaction
+			await testNetClientalgod.sendRawTransaction(signedTxn[0].blob).do();
+			try {
+				if (txIdd) {
+					// Wait for confirmation
+					let confirmedTxn = await algosdk.waitForConfirmation(
+						testNetClientalgod,
+						txIdd,
+						4
+					);
+
+					setPendingSubmissions(confirmedTxn['confirmed-round']);
+					console.log(`Transaction confirmed at round ${confirmedTxn}`);
+					await LatestValue(address, chain, tokenType);
+					await LatestValue(address, chain, 1);
+				}
+			} catch (err) {
+				console.error(`Error submitting transaction: `, err);
+			}
+		} catch (err) {}
+	}
 	const [holdSelect, setHoldSelect] = useState(0);
 	const [assetsSelected, setAssetsSelected] = useState(['77141623']);
 	const initialState = 0;
@@ -1233,263 +1408,430 @@ export default function Body(props: {
 		{ value: 'strawberry', label: 'Strawberry' },
 		{ value: 'Jusd', label: 'jusd' },
 	];
+	const customStyles = {
+		option: (provided: any, state: any) => ({
+			...provided,
+			borderBottom: '1px dotted pink',
+			color: state.isSelected ? 'red' : 'blue',
+			padding: 0,
+		}),
+		control: () => ({
+			// none of react-select's styles are passed to <Control />
+			width: 100,
+			height: 10,
+		}),
+		singleValue: (provided: any, state: any) => {
+			const opacity = state.isDisabled ? 0.5 : 1;
+			const transition = 'opacity 300ms';
+
+			return { ...provided, opacity, transition };
+		},
+	};
+	const getNFTs = async () => {
+		const response = await fetch('/api/accountAssets', {
+			method: 'POST',
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				address,
+			}),
+		});
+		const data = await response.json();
+		return data;
+	};
+	const loadOptions = (
+		inputValue: string,
+		callback: (options: iOption[]) => void
+	) => {
+		setTimeout(async () => {
+			// Fetch data
+			const data = await getNFTs();
+			if (data !== undefined) {
+				console.log(data);
+
+				// Extract data and populate AsyncSelect
+				const tempArray: iOption[] = [];
+				/* if (data[0]['id'] === 0) {
+					callback([]);
+				} */
+				data.forEach((element: any) => {
+					tempArray.push({
+						label: `${element['unitName']}`,
+						value: `${JSON.stringify(element, replacer)}`,
+					});
+				});
+				callback(
+					tempArray.filter((i) =>
+						i.label.toLowerCase().includes(inputValue.toLowerCase())
+					)
+				);
+			}
+		});
+	};
+	const handleInputChange = (newValue: string) => {
+		const inputValue = newValue.replace(/\W/g, '');
+		//setInputValue(inputValue);
+		return inputValue;
+	};
 	return (
 		<div>
-			{/* Body component */}
-			<div className='flex flex-col items-center mt-16 flex-grow'>
-				{/* Nav */}
-				<nav className='relative border-b'>
-					<div className='flex px-10 sm:px-20 text-2xl whitespace-nowrap space-x-10 sm:space-x-20  '>
-						<a
-							className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
-								openTab === 1 && 'text-indigo-500 border-indigo-500'
-							}`}
+			<ToastContainer
+				hideProgressBar={false}
+				newestOnTop
+				closeOnClick
+				rtl={false}
+				pauseOnFocusLoss
+				draggable
+				pauseOnHover
+			/>
+			{openPage === 1 ? (
+				<div className='flex whitespace-nowrap space-x-10 sm:space-x-20 '>
+					<div className='group'>
+						<button
+							className={`flex flex-auto items-center min-w-min max-w-max pl-14 pr-0 pb-0.5 cursor-pointer transition duration-100 group-hover:text-indigo-500 
+					`}
 							onClick={(e) => {
 								e.preventDefault();
-								setOpenTab(1);
-
-								setUserInput(0);
+								setOpenPage(0);
 							}}
 						>
-							Borrow
-						</a>
+							<span className='border-b-2'>{'Fiat'}</span>
+							<ChevronDoubleRightIcon className='h-5 sm:ml-2 text-gray-500 cursor-pointer transition duration-100 transform group-hover:scale-110 group-hover:text-indigo-500' />
+						</button>
+					</div>
+					<div className='group'>
 						<a
-							className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
-								openTab === 2 && 'text-indigo-500 border-indigo-500'
-							}`}
+							className={`flex flex-auto items-center max-w-min border-transparent pb-0.5 cursor-pointer transition duration-100 group-hover:text-indigo-500 group-hover:border-indigo-500
+					`}
 							onClick={(e) => {
 								e.preventDefault();
-								setOpenTab(2);
-								setUserInput(0);
+								setOpenPage(2);
 							}}
 						>
-							Repay
-						</a>
-						<a
-							className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
-								openTab === 3 && 'text-indigo-500 border-indigo-500'
-							}`}
-							onClick={(e) => {
-								e.preventDefault();
-								setOpenTab(3);
-								setUserInput(0);
-							}}
-						>
-							Earn
-						</a>
-						<a
-							className={` border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
-								openTab === 4 && 'text-indigo-500 border-indigo-500'
-							}`}
-							onClick={(e) => {
-								e.preventDefault();
-								setOpenTab(4);
-								setUserInput(0);
-							}}
-						>
-							Claim
+							<span className='border-b-2 '>{'Facuets'}</span>
+							<ChevronRightIcon className='h-5 sm:mr-2 text-gray-500 cursor-pointer transition duration-100 transform group-hover:scale-125 group-hover:text-indigo-500' />
 						</a>
 					</div>
-				</nav>
-				{openTab === 1 && (
-					<>
-						<BalanceAsset
-							key={LOFTYtoken.id}
-							asset={LOFTYtoken}
-							bodyamount={newAmount}
-						/>
-					</>
-				)}
-				{openTab === 2 && (
-					<BalanceAsset
-						key={USDCtoken.id}
-						asset={USDCtoken}
-						bodyamount={newAmount2}
+				</div>
+			) : openPage === 0 ? (
+				<>
+					<div className='group'>
+						<a
+							className={`flex flex-auto items-center max-w-min pl-14 border-transparent pb-0.5 cursor-pointer transition duration-100 group-hover:text-indigo-500 group-hover:border-indigo-500
+					`}
+							onClick={(e) => {
+								e.preventDefault();
+								setOpenPage(1);
+							}}
+						>
+							<ChevronLeftIcon className='h-5 sm:mr-2 text-gray-500 cursor-pointer transition duration-100 transform group-hover:scale-125 group-hover:text-indigo-500' />
+							<span className='border-b-2 '>{'Back'}</span>
+						</a>
+					</div>
+					<Fiat address={address} />
+				</>
+			) : (
+				<>
+					<div className='group'>
+						<a
+							className={`flex flex-auto items-center max-w-min pl-14 border-transparent pb-0.5 cursor-pointer transition duration-100 group-hover:text-indigo-500 group-hover:border-indigo-500
+					`}
+							onClick={(e) => {
+								e.preventDefault();
+								setOpenPage(1);
+							}}
+						>
+							<ChevronLeftIcon className='h-5 sm:mr-2 text-gray-500 cursor-pointer transition duration-100 transform group-hover:scale-125 group-hover:text-indigo-500' />
+							<span className='border-b-2 '>{'Back'}</span>
+						</a>
+					</div>
+					<Faucets
+						assets={assets}
+						address={address}
+						connector={connector}
+						chain={chain}
+						wc={wc}
+						mconnector={mconnector}
 					/>
-				)}
-				{openTab === 3 && (
-					<>
+				</>
+			)}
+
+			{/* Body component */}
+			{openPage === 1 && (
+				<div className='flex flex-col items-center mt-16 flex-grow'>
+					{/* Nav */}
+					<nav className='relative border-b'>
+						<div className='flex px-14 sm:px-20 text-2xl whitespace-nowrap space-x-10 sm:space-x-20  '>
+							<a
+								className={`pl-14 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
+									openTab === 1 && 'text-indigo-500 border-indigo-500'
+								}`}
+								onClick={(e) => {
+									e.preventDefault();
+									setOpenTab(1);
+
+									setUserInput(0);
+								}}
+							>
+								Borrow
+							</a>
+							<a
+								className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
+									openTab === 2 && 'text-indigo-500 border-indigo-500'
+								}`}
+								onClick={(e) => {
+									e.preventDefault();
+									setOpenTab(2);
+									setUserInput(0);
+								}}
+							>
+								Repay
+							</a>
+							<a
+								className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
+									openTab === 3 && 'text-indigo-500 border-indigo-500'
+								}`}
+								onClick={(e) => {
+									e.preventDefault();
+									setOpenTab(3);
+									setUserInput(0);
+								}}
+							>
+								Earn
+							</a>
+							<a
+								className={` border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
+									openTab === 4 && 'text-indigo-500 border-indigo-500'
+								}`}
+								onClick={(e) => {
+									e.preventDefault();
+									setOpenTab(4);
+									setUserInput(0);
+								}}
+							>
+								Claim
+							</a>
+						</div>
+					</nav>
+					{openTab === 1 && (
+						<>
+							<BalanceAsset
+								key={NFTSelected.id}
+								asset={NFTSelected}
+								bodyamount={newAmount}
+							/>
+						</>
+					)}
+					{openTab === 2 && (
 						<BalanceAsset
 							key={USDCtoken.id}
 							asset={USDCtoken}
 							bodyamount={newAmount2}
 						/>
-						<assetsContext.Provider
-							value={{
-								countState: count,
-								countDispatch: dispatch,
-								assetSelect: setAssetsSelected,
-								assetVals: assetsSelected,
-							}}
-						>
-							<SelectAssets assetid={77141623} />
-						</assetsContext.Provider>
-					</>
-				)}
-				{openTab === 4 &&
-					tokens.map((token) => (
-						<BalanceAsset
-							key={token.id}
-							asset={token}
-							bodyamount={newAmount3}
-						/>
-					))}
-				{/* <Tabs color='blue' /> */}
-				<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-					<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-						{openTab === 1 && (
-							<>
-								<span
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-									onClick={(e) => {
-										e.preventDefault();
-										maximumAmount(LOFTYtoken, 0, newAmount);
-									}}
-								>
-									MAX
-								</span>
-								<span className='pl-2 text-gray-500'>
-									<Select
-										options={options}
-										defaultValue={options[0]}
-										isSearchable={true}
-									/>
-								</span>
-							</>
-						)}
-						{openTab === 2 && (
-							<>
-								<span
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-									onClick={(e) => {
-										e.preventDefault();
-										maximumAmount(USDCtoken, 1, newAmount2);
-									}}
-								>
-									MAX
-								</span>
-								<span className='pl-2 text-gray-500'>USDC</span>
-							</>
-						)}
-						{openTab === 3 && (
-							<>
-								<span
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-									onClick={(e) => {
-										e.preventDefault();
-										maximumAmount(USDCtoken, 1, newAmount2);
-									}}
-								>
-									MAX
-								</span>
-								<span className='pl-2 text-gray-500'>USDC</span>
-							</>
-						)}
-						{openTab === 4 && (
-							<>
-								<span
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-									onClick={(e) => {
-										e.preventDefault();
-										maximumAmount(JINAtoken, 2, newAmount3);
-									}}
-								>
-									MAX
-								</span>
-								<span className='pl-2 text-gray-500'>JUSD</span>
-							</>
-						)}
-					</div>
-					<input
-						ref={searchInputRef}
-						type='number'
-						className='flex-grow focus:outline-none bg-[#FAFAFA]'
-						value={userInput}
-						onChange={(e) => setUserInput(Number(e.target.value))}
-					/>
-					<XIcon
-						className='h-5 sm:mr-3 text-gray-500 cursor-pointer transition duration-100 transform hover:scale-125'
-						onClick={() => setUserInput(0)}
-					/>
-					{openTab === 1 && (
-						<>
-							<button hidden type='submit' onClick={Borrow}>
-								Borrow
-							</button>
-						</>
-					)}
-					{openTab === 2 && (
-						<button hidden type='submit' onClick={Repay}>
-							{' '}
-							repay{' '}
-						</button>
 					)}
 					{openTab === 3 && (
 						<>
-							<button hidden type='submit' onClick={stake}>
-								{' '}
-								stake{' '}
-							</button>
+							<BalanceAsset
+								key={USDCtoken.id}
+								asset={USDCtoken}
+								bodyamount={newAmount2}
+							/>
+							<assetsContext.Provider
+								value={{
+									countState: count,
+									countDispatch: dispatch,
+									assetSelect: setAssetsSelected,
+									assetVals: assetsSelected,
+								}}
+							>
+								<SelectAssets assetid={77141623} />
+							</assetsContext.Provider>
 						</>
 					)}
-					{openTab === 4 && (
-						<button hidden type='submit' onClick={claimUSDC}>
-							{' '}
-							claim{' '}
-						</button>
-					)}
-				</form>
-				{openTab === 1 && (
-					<>
-						<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-							<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-								{/* <span className='pr-2 text-indigo-400'>
-									USDC
-								</span> */}
-								<span
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-									onClick={(e) => {
-										e.preventDefault();
-										maximumAmount(LOFTYtoken, 0, newAmount);
-									}}
-								>
-									MAX
-								</span>
-								<span className='pl-2 text-gray-500'>USDC</span>
-							</p>
-							<input
-								type='number'
-								placeholder='loan amount'
-								className='flex-grow focus:outline-none bg-[#FAFAFA]'
-								value={borrowing}
-								onChange={(e) => {
-									setSwitcher(1);
-									setBorrowing(Number(e.target.value));
-								}}
+					{openTab === 4 &&
+						tokens.map((token) => (
+							<BalanceAsset
+								key={token.id}
+								asset={token}
+								bodyamount={newAmount3}
 							/>
-						</form>
-
-						<div className='flex flex-col w-1/2 space-y-2 justify-center mt-7 sm:space-y-0 sm:flex-row sm:space-x-4'>
-							{Borrowscenarios.map(({ name, scenario1 }) => (
-								<button
-									className='btn'
-									key={name}
-									onClick={(e) => {
-										e.preventDefault();
-										setSwitcher(1);
-										signTxnLogic(
-											scenario1,
-											connector as WalletConnect,
-											address,
-											chain,
-											0
-										);
-									}}
-								>
-									{name}
+						))}
+					{/* <Tabs color='blue' /> */}
+					<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
+						<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+							{openTab === 1 && (
+								<>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmount(NFTSelected, 0, newAmount);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>
+										<AsyncSelect
+											cacheOptions
+											loadOptions={loadOptions}
+											placeholder='Select NFT/Assets'
+											defaultOptions
+											onInputChange={handleInputChange}
+											onChange={async (option) => {
+												setSelectedNFT(option as iOption);
+											}}
+										/>
+									</span>
+								</>
+							)}
+							{openTab === 2 && (
+								<>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmount(USDCtoken, 1, newAmount2);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>USDC</span>
+								</>
+							)}
+							{openTab === 3 && (
+								<>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmount(USDCtoken, 1, newAmount2);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>USDC</span>
+								</>
+							)}
+							{openTab === 4 && (
+								<>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmount(JINAtoken, 2, newAmount3);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>JUSD</span>
+								</>
+							)}
+						</div>
+						<input
+							ref={searchInputRef}
+							type='number'
+							className='flex-grow focus:outline-none bg-[#FAFAFA]'
+							value={userInput}
+							onChange={(e) => setUserInput(Number(e.target.value))}
+						/>
+						<XIcon
+							className='h-5 sm:mr-3 text-gray-500 cursor-pointer transition duration-100 transform hover:scale-125'
+							onClick={() => setUserInput(0)}
+						/>
+						{openTab === 1 && (
+							<>
+								{wc ? (
+									<button hidden type='submit' onClick={Borrow}>
+										Borrow
+									</button>
+								) : (
+									<button hidden type='submit' onClick={Borrow}>
+										Borrow
+									</button>
+								)}
+							</>
+						)}
+						{openTab === 2 && (
+							<button hidden type='submit' onClick={Repay}>
+								{' '}
+								repay{' '}
+							</button>
+						)}
+						{openTab === 3 && (
+							<>
+								<button hidden type='submit' onClick={stake}>
+									{' '}
+									stake{' '}
 								</button>
-							))}
-							{/* <button
+							</>
+						)}
+						{openTab === 4 && (
+							<button hidden type='submit' onClick={claimUSDC}>
+								{' '}
+								claim{' '}
+							</button>
+						)}
+					</form>
+					{openTab === 1 && (
+						<>
+							<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
+								<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmount(NFTSelected, 0, newAmount);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>USDC</span>
+								</p>
+								<input
+									type='number'
+									placeholder='loan amount'
+									className='flex-grow focus:outline-none bg-[#FAFAFA]'
+									value={borrowing}
+									onChange={(e) => {
+										setSwitcher(1);
+										setBorrowing(Number(e.target.value));
+									}}
+								/>
+							</form>
+
+							<div className='flex flex-col w-1/2 space-y-2 justify-center mt-7 sm:space-y-0 sm:flex-row sm:space-x-4'>
+								{Borrowscenarios.map(({ name, scenario1 }) => (
+									<button
+										className='btn'
+										key={name}
+										onClick={(e) => {
+											e.preventDefault();
+											setSwitcher(1);
+											if (wc) {
+												signTxnLogic(
+													scenario1,
+													connector as WalletConnect,
+													address,
+													chain,
+													0
+												);
+											} else {
+												myAlgoSign(
+													scenario1,
+													mconnector as MyAlgoConnect,
+													address,
+													chain,
+													0
+												);
+											}
+										}}
+									>
+										{name}
+									</button>
+								))}
+								{/* <button
 								onClick={(e) => {
 									e.preventDefault();
 									LatestValue(address, chain, 0);
@@ -1498,122 +1840,160 @@ export default function Body(props: {
 							>
 								Increase Collateral
 							</button> */}
-							<button
-								onClick={(e) => {
-									e.preventDefault();
-									LatestValue(address, chain, 0);
-									borrowIndexer(77141623, searchAmount());
-								}}
-								className='btn'
-							>
-								Search Lenders
-							</button>
-						</div>
-					</>
-				)}
-				{/* className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100' */}
-				{openTab === 2 && (
-					<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
-						{Repayscenarios.map(({ name, scenario1 }) => (
-							<button
-								className='btn'
-								key={name}
-								onClick={(e) => {
-									e.preventDefault();
-									signTxnLogic(
-										scenario1,
-										connector as WalletConnect,
-										address,
-										chain,
-										1
-									);
-								}}
-							>
-								{name}
-							</button>
-						))}
-					</div>
-				)}
-				{openTab === 3 && (
-					<>
-						<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-							<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-								<span
+								<button
 									onClick={(e) => {
 										e.preventDefault();
-										expiringdayRef.current.value = 10;
+										LatestValue(address, chain, 0);
+										borrowIndexer(NFTSelected.id, searchAmount());
 									}}
-									className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+									className='btn'
 								>
-									Expire Day
-								</span>
-							</p>
-							<input
-								type='number'
-								placeholder='10 days'
-								className='flex-grow focus:outline-none bg-[#FAFAFA]'
-								ref={expiringdayRef}
-								onChange={(e) => {
-									setExpireday(Number(e.target.value));
-								}}
-							/>
-						</form>
-						<div
-							onClick={(e) => {
-								e.preventDefault();
-								LatestValue(address, chain, 1);
-							}}
-							className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'
-						>
-							<assetsContext.Provider
-								value={{
-									countState: count,
-									countDispatch: dispatch,
-									assetSelect: setAssetsSelected,
-									assetVals: assetsSelected,
-									addressVal: address,
-									//maccounts: maccounts,
-								}}
-							>
-								{/* <AlgoSignerLsig /> */}
-								{wc ? (
-									<>
-										<p>Connect with MyAlgo wallet to access LogicSig</p>
-									</>
-								) : (
-									<DynamicComponentWithNoSSR
-										amount={userInput}
-										round={expireday}
-									/>
-								)}
-							</assetsContext.Provider>
-						</div>
-					</>
-				)}
-				{openTab === 4 && (
-					<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
-						{Claimscenarios.map(({ name, scenario1 }) => (
-							<button
-								className='btn'
-								key={name}
+									Search Lenders
+								</button>
+							</div>
+						</>
+					)}
+					{/* className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100' */}
+					{openTab === 2 && (
+						<>
+							<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
+								<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+									<span
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+										onClick={(e) => {
+											e.preventDefault();
+											maximumAmountRepay(NFTSelected, 0, newAmount);
+										}}
+									>
+										MAX
+									</span>
+									<span className='pl-2 text-gray-500'>
+										<AsyncSelect
+											cacheOptions
+											loadOptions={loadOptions}
+											placeholder='Select NFT/Assets'
+											defaultOptions
+											onInputChange={handleInputChange}
+											onChange={async (option) => {
+												setSelectedNFT(option as iOption);
+											}}
+										/>
+									</span>
+								</div>
+								<input
+									type='number'
+									placeholder='loan amount'
+									className='flex-grow focus:outline-none bg-[#FAFAFA]'
+									value={borrowing}
+									onChange={(e) => {
+										setSwitcher(1);
+										setBorrowing(Number(e.target.value));
+									}}
+								/>
+							</form>
+
+							<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
+								{Repayscenarios.map(({ name, scenario1 }) => (
+									<button
+										className='btn'
+										key={name}
+										onClick={(e) => {
+											e.preventDefault();
+											signTxnLogic(
+												scenario1,
+												connector as WalletConnect,
+												address,
+												chain,
+												1
+											);
+										}}
+									>
+										{name}
+									</button>
+								))}
+							</div>
+						</>
+					)}
+					{openTab === 3 && (
+						<>
+							<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
+								<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+									<span
+										onClick={(e) => {
+											e.preventDefault();
+											expiringdayRef.current.value = 10;
+										}}
+										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
+									>
+										Expire Day
+									</span>
+								</p>
+								<input
+									type='number'
+									placeholder='10 days'
+									className='flex-grow focus:outline-none bg-[#FAFAFA]'
+									ref={expiringdayRef}
+									onChange={(e) => {
+										setExpireday(Number(e.target.value));
+									}}
+								/>
+							</form>
+							<div
 								onClick={(e) => {
 									e.preventDefault();
-									signTxnLogic(
-										scenario1,
-										connector as WalletConnect,
-										address,
-										chain,
-										2
-									);
+									LatestValue(address, chain, 1);
 								}}
+								className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'
 							>
-								{name}
-							</button>
-						))}
-					</div>
-				)}
-			</div>
-
+								<assetsContext.Provider
+									value={{
+										countState: count,
+										countDispatch: dispatch,
+										assetSelect: setAssetsSelected,
+										assetVals: assetsSelected,
+										addressVal: address,
+										//maccounts: maccounts,
+									}}
+								>
+									{/* <AlgoSignerLsig /> */}
+									{wc ? (
+										<>
+											<p>Connect with MyAlgo wallet to access LogicSig</p>
+										</>
+									) : (
+										<DynamicComponentWithNoSSR
+											amount={userInput}
+											round={expireday}
+										/>
+									)}
+								</assetsContext.Provider>
+							</div>
+						</>
+					)}
+					{openTab === 4 && (
+						<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
+							{Claimscenarios.map(({ name, scenario1 }) => (
+								<button
+									className='btn'
+									key={name}
+									onClick={(e) => {
+										e.preventDefault();
+										signTxnLogic(
+											scenario1,
+											connector as WalletConnect,
+											address,
+											chain,
+											2
+										);
+									}}
+								>
+									{name}
+								</button>
+							))}
+						</div>
+					)}
+				</div>
+			)}
 			{/* Footer */}
 			<Modal show={showModal} toggleModal={toggleModal}>
 				{pendingRequest ? (
@@ -1633,44 +2013,50 @@ export default function Body(props: {
 						<div className='mt-1 mb-0 font-bold text-xl'>
 							{'Call Request Approved'}
 						</div>
-						{pendingSubmissions.map((submissionInfo, index) => {
-							const key = `${index}:${
-								typeof submissionInfo === 'number' ? submissionInfo : 'err'
-							}`;
-							const prefix = `Txn Group ${index}: `;
-							let content: string;
+						{React.Children.toArray(
+							pendingSubmissions.map((submissionInfo, index) => {
+								const key = `${index}:${
+									typeof submissionInfo === 'number' ? submissionInfo : 'err'
+								}`;
+								const prefix = `Txn Group ${index}: `;
+								let content: string;
 
-							if (submissionInfo === 0) {
-								content = 'Submitting...';
-							} else if (typeof submissionInfo === 'number') {
-								content = `Confirmed at round ${submissionInfo}`;
-							} else {
-								content =
-									'Rejected by network. See console for more information.';
-							}
+								if (submissionInfo === 0) {
+									content = 'Submitting...';
+								} else if (typeof submissionInfo === 'number') {
+									content = `Confirmed at round ${submissionInfo}`;
+								} else {
+									content =
+										'Rejected by network. See console for more information.';
+								}
 
-							return (
-								<>
-									<div className='flex flex-col text-left'>
-										{result.body.map((signedTxns, index) => (
-											<div className='w-full flex mt-1 mb-0' key={index}>
-												<div className='w-1/6 font-bold'>{`TxID: `}</div>
-												<div className='w-10/12 font-mono'>
-													{signedTxns.map((txn, txnIndex) => (
-														<div key={txnIndex}>
-															{!!txn?.txID && <p>{txn.txID}</p>}
+								return (
+									<>
+										<div className='flex flex-col text-left'>
+											{React.Children.toArray(
+												result.body.map((signedTxns, index) => (
+													<div className='w-full flex mt-1 mb-0' key={index}>
+														<div className='w-1/6 font-bold'>{`TxID: `}</div>
+														<div className='w-10/12 font-mono'>
+															{React.Children.toArray(
+																signedTxns.map((txn, txnIndex) => (
+																	<div key={txnIndex}>
+																		{!!txn?.txID && <p>{txn.txID}</p>}
+																	</div>
+																))
+															)}
 														</div>
-													))}
-												</div>
-											</div>
-										))}
-									</div>
-									<div className='mt-1 mb-0 font-bold text-xl' key={key}>
-										{content}
-									</div>
-								</>
-							);
-						})}
+													</div>
+												))
+											)}
+										</div>
+										<div className='mt-1 mb-0 font-bold text-xl' key={key}>
+											{content}
+										</div>
+									</>
+								);
+							})
+						)}
 					</div>
 				) : (
 					<div className='w-full relative break-words'>
