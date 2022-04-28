@@ -11,7 +11,7 @@ import {
 	apiSubmitTransactions,
 	ChainType,
 } from '../lib/helpers/api';
-import { DUSD, NFTColl } from '../lib/helpers/constants';
+import { APP_ID, DUSD, NFTColl } from '../lib/helpers/constants';
 import { Scenario, ScenarioReturnType } from '../lib/helpers/scenarios';
 import {
 	IAssetData,
@@ -57,6 +57,36 @@ export default function Faucets({
 	const NFTColtoken = assets.find(
 		(asset: IAssetData) => asset && asset.id === NFTColl
 	);
+	const AppClearState: Scenario = async (
+		chain: ChainType,
+		address: string
+	): Promise<ScenarioReturnType> => {
+		const suggestedParams = await apiGetTxnParams(chain);
+
+		const appIndex = APP_ID;
+
+		const txn = algosdk.makeApplicationClearStateTxnFromObject({
+			from: address,
+			appIndex,
+			note: new Uint8Array(Buffer.from('Opt-Out APP')),
+			appArgs: [],
+			suggestedParams,
+		});
+
+		const txnsToSign = [
+			{
+				txn,
+				message: 'This transaction will forcibly opt you out of the test app.',
+			},
+		];
+		return [txnsToSign];
+	};
+	const ClearAppscenarios: Array<{ name: string; scenario1: Scenario }> = [
+		{
+			name: 'OPT-OUT APP',
+			scenario1: AppClearState,
+		},
+	];
 	const ipfs = create({
 		host: 'ipfs.infura.io',
 		port: 5001,
@@ -114,7 +144,7 @@ export default function Faucets({
 		algosdk.assignGroupID(txnsToSign.map((toSign) => toSign.txn));
 		return [txnsToSign];
 	};
-	const scenarios1: Array<{ name: string; scenario1: Scenario }> = [
+	const DispenseNFT: Array<{ name: string; scenario1: Scenario }> = [
 		{
 			name: 'Dispense',
 			scenario1: colAssetTransferTxn,
@@ -333,6 +363,151 @@ export default function Faucets({
 			setResult(null);
 		}
 	}
+	function filterByID(item: any) {
+		if (item.txn && item.signers === undefined) {
+			return true;
+		} //else if(item.signers === []) {return false}
+
+		return false;
+	}
+	function filterByIDLsig(item: any) {
+		if (item.txn && item.signers !== undefined) {
+			return true;
+		} //else if(item.signers !== []) {return false}
+
+		return false;
+	}
+	async function myAlgoSign(
+		scenario1: Scenario,
+		mconnector: MyAlgoConnect,
+		address: string,
+		chain: ChainType
+	) {
+		if (!mconnector) {
+			console.log('No connector found!');
+			return;
+		}
+		try {
+			const txnsToSign = await scenario1(chain, address);
+			console.log(txnsToSign);
+			// open modal
+			toggleModal();
+			setPendingRequest(true);
+
+			const flatTxns = txnsToSign.reduce((acc, val) => acc.concat(val), []);
+
+			// sign transaction
+			const myAlgoConnect = new MyAlgoConnect();
+
+			const filtered = flatTxns.filter(filterByID);
+
+			const txnsArray = filtered.map((a) => a.txn);
+
+			const fullArray = flatTxns.map((a) => a.txn);
+
+			const signedTxs: Array<Uint8Array> = [];
+			const signedGroup: Array<Array<Uint8Array>> = [];
+			const signedTx = await myAlgoConnect.signTransaction(
+				txnsArray.map((txn) => txn.toByte())
+			);
+			console.log('Raw signed response:', signedTx);
+			if (txnsArray.length !== fullArray.length) {
+				const filterLsig = flatTxns.filter(filterByIDLsig);
+				const LsigTxns = filterLsig.map((a) => a.txn);
+
+				signedTxs.push(signedTx[0].blob);
+
+				const LogicSigned = signTxnLogicSigWithTestAccount(LsigTxns[0]);
+				signedTxs.push(LogicSigned);
+				signedGroup.push(signedTxs);
+			} else {
+				for (const i in signedTx) {
+					signedTxs.push(signedTx[i].blob);
+				}
+
+				signedGroup.push(signedTxs);
+			}
+
+			const signedTxnInfo: Array<
+				Array<{
+					txID: string;
+					signingAddress?: string;
+					signature: string;
+				} | null>
+			> = signedGroup.map((signedInternal, group) => {
+				return signedInternal.map((rawSignedTxn, i) => {
+					if (rawSignedTxn == null) {
+						return null;
+					}
+
+					const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
+					const txn = signedTxn.txn as unknown as algosdk.Transaction;
+					const txID = txn.txID();
+					const unsignedTxID = txnsToSign[group][i].txn.txID();
+
+					if (txID !== unsignedTxID) {
+						throw new Error(
+							`Signed transaction at index ${i} differs from unsigned transaction. Got ${txID}, expected ${unsignedTxID}`
+						);
+					}
+
+					if (!signedTxn.sig) {
+						throw new Error(
+							`Signature not present on transaction at index ${i}`
+						);
+					}
+
+					return {
+						txID,
+						signingAddress: signedTxn.sgnr
+							? algosdk.encodeAddress(signedTxn.sgnr)
+							: undefined,
+						signature: Buffer.from(signedTxn.sig).toString('base64'),
+					};
+				});
+			});
+			const formattedResult: IResult = {
+				method: 'algo_signTxn',
+				body: signedTxnInfo,
+			};
+			setPendingRequest(false);
+			setResult(formattedResult);
+			// start submitting
+			setPendingSubmissions(signedGroup.map(() => 0) as []);
+			// Submit the transaction
+			signedGroup.forEach(async (signedTxn, index) => {
+				try {
+					const confirmedRound = await apiSubmitTransactions(chain, signedTxn);
+
+					setPendingSubmissions(
+						(prevPendingSubmissions) =>
+							prevPendingSubmissions.map((v, i) => {
+								if (index === i) {
+									return confirmedRound;
+								}
+								return v;
+							}) as []
+					);
+					console.log(`Transaction confirmed at round ${confirmedRound}`);
+				} catch (err) {
+					setPendingSubmissions(
+						(prevPendingSubmissions) =>
+							prevPendingSubmissions.map((v, i) => {
+								if (index === i) {
+									return err;
+								}
+								return v;
+							}) as []
+					);
+					console.error(`Error submitting transaction: `, err);
+				}
+			});
+		} catch (error) {
+			console.error(error);
+			setPendingRequest(false);
+			setResult(null);
+		}
+	}
 	return (
 		<>
 			<div className='flex flex-wrap sm:flex-none sm:whitespace-nowrap sm:space-x-10 md:space-x-20'>
@@ -356,18 +531,27 @@ export default function Faucets({
 							</div>
 							<div className='content-center'>
 								<div>
-									{scenarios1.map(({ name, scenario1 }) => (
+									{DispenseNFT.map(({ name, scenario1 }) => (
 										<button
 											className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100'
 											key={name}
 											onClick={(e) => {
 												e.preventDefault();
-												signTxnLogic(
-													scenario1,
-													connector as WalletConnect,
-													address,
-													chain
-												);
+												if (wc) {
+													signTxnLogic(
+														scenario1,
+														connector as WalletConnect,
+														address,
+														chain
+													);
+												} else {
+													myAlgoSign(
+														scenario1,
+														mconnector as MyAlgoConnect,
+														address,
+														chain
+													);
+												}
 											}}
 										>
 											{name}
@@ -389,18 +573,27 @@ export default function Faucets({
 							</div>
 							<div className='content-center'>
 								<div>
-									{scenarios1.map(({ name, scenario1 }) => (
+									{DispenseNFT.map(({ name, scenario1 }) => (
 										<button
 											className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#2CB7BC] text-gray-100 opacity-75 hover:opacity-100'
 											key={name}
 											onClick={(e) => {
 												e.preventDefault();
-												signTxnLogic(
-													scenario1,
-													connector as WalletConnect,
-													address,
-													chain
-												);
+												if (wc) {
+													signTxnLogic(
+														scenario1,
+														connector as WalletConnect,
+														address,
+														chain
+													);
+												} else {
+													myAlgoSign(
+														scenario1,
+														mconnector as MyAlgoConnect,
+														address,
+														chain
+													);
+												}
 											}}
 										>
 											{name}
@@ -464,6 +657,40 @@ export default function Faucets({
 							</a>
 						</div>
 					</div>
+				</div>
+
+				<div className='absolute bottom-0 right-0 flex w-full max-w-2xl items-center justify-evenly sm:w-48 sm:flex-wrap bg-white rounded-lg shadow-md p-6 mt-4 hover:cursor-pointer group'>
+					<div className='flex justify-between items-center'>
+						<h1 className='uppercase text-sm sm:text-base tracking-wide'>
+							Opt-Out App
+						</h1>
+					</div>
+					{ClearAppscenarios.map(({ name, scenario1 }) => (
+						<button
+							className='relative px-6 py-1 sm:px-7 sm:py-2 rounded-md leading-none flex items-center bg-[#18393a] text-gray-100'
+							key={name}
+							onClick={(e) => {
+								e.preventDefault();
+								if (wc) {
+									signTxnLogic(
+										scenario1,
+										connector as WalletConnect,
+										address,
+										chain
+									);
+								} else {
+									myAlgoSign(
+										scenario1,
+										mconnector as MyAlgoConnect,
+										address,
+										chain
+									);
+								}
+							}}
+						>
+							{name}
+						</button>
+					))}
 				</div>
 			</div>
 			<Modal show={showModal} toggleModal={toggleModal}>

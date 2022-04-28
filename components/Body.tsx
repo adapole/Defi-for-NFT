@@ -57,6 +57,7 @@ import MyAlgoConnect from '@randlabs/myalgo-connect';
 import Faucets from './Faucets';
 import Fiat from './Fiat';
 import AsyncSelect from 'react-select/async';
+import { group } from 'console';
 
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
@@ -186,77 +187,22 @@ export default function Body(props: {
 	mconnector: MyAlgoConnect | null;
 }) {
 	const { assets, connector, address, chain, wc, mconnector } = props;
-	//console.log(lsa);
-	const [makeLogicSig, setMakeLogicSig] = useState(new Uint8Array());
 	const [borrowLogicSig, setBorrowLogicSig] = useState(new Uint8Array());
 	const [addressLogicSig, setAddressLogicSig] = useState('');
 	const [switcher, setSwitcher] = useState(0);
-	const [jusdLogicSig, setJusdLogicSig] = useState(new Uint8Array());
 	const [selectedNFT, setSelectedNFT] = useState<iOption>({
 		value:
 			'{"id":77141623,"amount":0,"creator":"XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY","frozen":false,"decimals":0,"name":"Lofty jina property","unitName":"LFT-jina"}',
 		label: 'LFT-jina',
 	});
-
-	function writeUserData(
-		userId: Number,
-		name: string,
-		email: string,
-		imageUrl: Uint8Array
-	) {
-		/* const db = getDatabase(firebase);
-		set(ref(db, 'users/' + userId), {
-			username: name,
-			email: email,
-			profile_picture: imageUrl,
-		}); */
-	}
-	function readUserData(userId: Number): Uint8Array {
-		/* const dbRef = ref(getDatabase(firebase));
-		get(child(dbRef, `users/${userId}`))
-			.then((snapshot) => {
-				if (snapshot.exists()) {
-					console.log(snapshot.val().profile_picture);
-					let myval: Uint8Array = snapshot.val().profile_picture;
-					if (userId === 2) {
-						setMakeLogicSig(myval);
-					}
-					if (userId === 1) {
-						setJusdLogicSig(myval);
-					}
-					//console.log(makeLogicSig);
-				} else {
-					console.log('No data available');
-					return;
-				}
-			})
-			.catch((error) => {
-				console.error(error);
-			}); */
-		return makeLogicSig;
-	}
-	function readBorrowData(userId: string): Uint8Array {
-		/* const dbRef = ref(getDatabase(firebase));
-		get(child(dbRef, `users/${userId}`))
-			.then((snapshot) => {
-				if (snapshot.exists()) {
-					console.log(snapshot.val().profile_picture);
-					let lsaval: Uint8Array = snapshot.val().uint8_lsa;
-					let addval: string = snapshot.val().useraddress;
-					setAddressLogicSig(addval);
-					setBorrowLogicSig(lsaval);
-					console.log(lsaval);
-					console.log(addval);
-				} else {
-					console.log('No data available');
-					return;
-				}
-			})
-			.catch((error) => {
-				console.error(error);
-			}); */
-		return borrowLogicSig;
-	}
+	const checkAppLocalState = async () => {
+		const accountInfoResponse = await testNetClientindexer
+			.lookupAccountAppLocalStates(address)
+			.applicationID(APP_ID)
+			.do();
+		//console.log(accountInfo['apps-local-states']);
+		return accountInfoResponse;
+	};
 	const ipfs = create({
 		host: 'ipfs.infura.io',
 		port: 5001,
@@ -375,7 +321,10 @@ export default function Body(props: {
 									const amountborrowing = Number(
 										Math.floor(amount).toString() + '000000'
 									);
-									if (assetBalance >= kyv && kyv > amountborrowing) {
+									if (
+										assetBalance >= amountborrowing &&
+										kyv > amountborrowing
+									) {
 										// If aamt is equal or greater than available balance
 										console.log('Proceed to borrowing');
 										proceedToBorrow = true;
@@ -463,7 +412,7 @@ export default function Body(props: {
 		);
 		console.log(borrowLogic); */
 
-		const amountborrowing = Number(Math.floor(borrowing).toString() + '000000'); //Math.floor(borrowAmount(userInput)).toString() + '000000'
+		const amountborrowing = Number(borrowing * 1000000); //Math.floor(borrowAmount(userInput)).toString() + '000000'
 		console.log(amountborrowing);
 		console.log(userInput);
 		console.log(addressLogicSig);
@@ -474,7 +423,7 @@ export default function Body(props: {
 
 		const assetID = algosdk.encodeUint64(NFTSelected.id);
 		//const amount64 = algosdk.encodeUint64(1);
-		const Useramount64 = algosdk.encodeUint64(userInput);
+		const Useramount64 = algosdk.encodeUint64(Math.floor(userInput));
 		// change appIndex to BigEndian
 		suggestedParams.flatFee = true;
 		suggestedParams.fee = 4000;
@@ -508,8 +457,7 @@ export default function Body(props: {
 
 		const appIndex = 79061945;
 
-		const bigIntVal = Number(userInput);
-		const amount = Number(bigIntVal.toString() + '000000');
+		const amount = Number(userInput * 1000000);
 		console.log(amount);
 		//const assetID = algosdk.encodeUint64(77141623);
 		//const amount64 = algosdk.encodeUint64(1);
@@ -544,8 +492,8 @@ export default function Body(props: {
 		const USDCID = USDC;
 		const appIndex = APP_ID;
 
-		const bigIntVal = Number(userInput);
-		const amount = Number(bigIntVal.toString() + '000000');
+		const amount = Number(userInput * 1000000);
+
 		console.log(amount);
 		suggestedParams.flatFee = true;
 		suggestedParams.fee = 3000;
@@ -569,30 +517,6 @@ export default function Body(props: {
 		algosdk.assignGroupID(txnsToSign.map((toSign) => toSign.txn));
 		return [txnsToSign];
 	};
-	const JinaAppClearState: Scenario = async (
-		chain: ChainType,
-		address: string
-	): Promise<ScenarioReturnType> => {
-		const suggestedParams = await apiGetTxnParams(chain);
-
-		const appIndex = 79061945;
-
-		const txn = algosdk.makeApplicationClearStateTxnFromObject({
-			from: address,
-			appIndex,
-			note: new Uint8Array(Buffer.from('Opt-Out APP')),
-			appArgs: [],
-			suggestedParams,
-		});
-
-		const txnsToSign = [
-			{
-				txn,
-				message: 'This transaction will forcibly opt you out of the test app.',
-			},
-		];
-		return [txnsToSign];
-	};
 	const Claimscenarios: Array<{ name: string; scenario1: Scenario }> = [
 		{
 			name: 'Claim USDC',
@@ -611,28 +535,8 @@ export default function Body(props: {
 			scenario1: borrowAppCall,
 		},
 	];
-	const ClearAppscenarios: Array<{ name: string; scenario1: Scenario }> = [
-		{
-			name: 'OPT-OUT APP',
-			scenario1: JinaAppClearState,
-		},
-	];
 
-	useEffect(() => {
-		//readUserData(2);
-		//readUserData(1);
-		//readBorrowData('-Mz41LqbCdvaN8HDkwhz');
-		//console.log(borrowLogicSig);
-	}, [borrowLogicSig]);
-
-	function selectLogicSigDispence(txn: algosdk.Transaction): Uint8Array {
-		if (txn.assetIndex === 77141623) {
-			return makeLogicSig;
-		} else if (txn.assetIndex === 79077841) {
-			return jusdLogicSig;
-		}
-		return makeLogicSig;
-	}
+	useEffect(() => {}, [borrowLogicSig]);
 
 	function signTxnLogicSigWithTestAccount(
 		txn: algosdk.Transaction
@@ -652,16 +556,16 @@ export default function Body(props: {
 			}
 		} */
 
-		if (switcher === 1) {
-			//let lsa = borrowLogicSig;
-			//let lsa = makeLogicSig;
-			console.log('Final' + borrowLogicSig);
-			let lsig = algosdk.logicSigFromByte(borrowLogicSig);
-			console.log(lsig.toByte());
-			let signedTxn = algosdk.signLogicSigTransactionObject(txn, lsig);
-			console.log(signedTxn.txID);
-			return signedTxn.blob;
-		}
+		//if (switcher === 1) {
+		//let lsa = borrowLogicSig;
+		//let lsa = makeLogicSig;
+		console.log('Final' + borrowLogicSig);
+		let lsig = algosdk.logicSigFromByte(borrowLogicSig);
+		console.log(lsig.toByte());
+		let signedTxn = algosdk.signLogicSigTransactionObject(txn, lsig);
+		console.log(signedTxn.txID);
+		return signedTxn.blob;
+
 		/*
 		 */
 
@@ -678,28 +582,6 @@ export default function Body(props: {
 		decimals: extractValues.decimals,
 		name: extractValues.name,
 		unitName: extractValues.unitName,
-	};
-	const LOFTYtoken = assets.find(
-		(asset: IAssetData) => asset && asset.id === 77141623
-	) || {
-		id: 77141623,
-		amount: BigInt(0),
-		creator: '',
-		frozen: false,
-		decimals: 0,
-		name: 'Lofty jina property',
-		unitName: 'LFT-jina',
-	};
-	const nativeCurrency = assets.find(
-		(asset: IAssetData) => asset && asset.id === 0
-	) || {
-		id: 0,
-		amount: BigInt(0),
-		creator: '',
-		frozen: false,
-		decimals: 6,
-		name: 'Algo',
-		unitName: 'Algo',
 	};
 	const USDCtoken = assets.find(
 		(asset: IAssetData) => asset && asset.id === 10458941
@@ -727,7 +609,6 @@ export default function Body(props: {
 		unitName: 'jUSD',
 	};
 
-	const router = useRouter();
 	const searchInputRef: any = useRef(null);
 	const expiringdayRef: any = useRef(null);
 
@@ -757,19 +638,41 @@ export default function Body(props: {
 		tokenType: number,
 		bodyamounts: string
 	) {
-		focus();
-		if (!bodyamounts) {
-			setBorrowing(
-				Number(
-					formatBigNumWithDecimals(
-						BigInt(tokenAsset.amount),
-						tokenAsset.decimals
-					)
-				)
-			);
-			return;
+		const accountInfoResponse = await checkAppLocalState();
+		if (accountInfoResponse === null) return;
+
+		for (
+			let n = 0;
+			n < accountInfoResponse['apps-local-states'][0]['key-value'].length;
+			n++
+		) {
+			console.log(accountInfoResponse['apps-local-states'][0]['key-value'][n]);
+			let kv = accountInfoResponse['apps-local-states'][0]['key-value'];
+			let ky = kv[n]['key'];
+			// if ky = lamt, display the value
+			if (ky === 'bGFtdA==') {
+				// Extract bytes and compare to assetid
+				let lamt = kv[n]['value']['bytes'];
+				//console.log(lamt);
+
+				let buff = Buffer.from(lamt, 'base64');
+				/* let values: Array<number> = [];
+				for (let n = 0; n < buff.length; n = n + 8) {
+					// Array offset, then check value
+					console.log('Checkin For: ' + n);
+					values.push(buff.readUIntBE(n, 8));
+				} */
+
+				const value = buff.readBigUInt64BE(0);
+				//console.log(value);
+				focus();
+				if (!bodyamounts) {
+					setUserInput(Number(formatBigNumWithDecimals(value, 6)));
+					return;
+				}
+				setUserInput(0);
+			}
 		}
-		setBorrowing(Number(bodyamounts));
 		return;
 	}
 	function Borrow(e: any) {
@@ -779,38 +682,13 @@ export default function Body(props: {
 		if (!connector) return;
 		//signTxnScenario(singleAppOptIn, connector, address, chain, 0);
 	}
-	function increaseBorrow(e: any) {
-		e.preventDefault();
-		console.log('increaseBorrow function run!');
-	}
+
 	function Repay(e: any) {
 		e.preventDefault();
 		console.log('Repay function run!');
 	}
 	async function stake() {
 		console.log('Stake function run!');
-		//let lsa = await MyalgoLsig(10000000);
-
-		let lsa = await tealProgramDispence(77141623, 4);
-		console.log(lsa);
-		writeUserData(9, 'Staker', 'USDC', lsa);
-		// After reading
-		//const lsigs = algosdk.LogicSigAccount.fromByte(lsa);
-
-		//let lsa1 = readUserData(5);
-		//console.log(lsa1);
-		//let alsig = algosdk.LogicSigAccount.fromByte(lsa1);
-
-		//let aa = alsig.toByte();
-		//writeUserData(7, 'jina', 'dora', aa);
-		//setMakeLogicSig(newAmount2);
-		//const logicSigAmount = Number(makeLogicSig);
-		//const lsa = await tealProgramMake(logicSigAmount);
-		//const suggestedParams = await apiGetTxnParams(ChainType.TestNet);
-		// send to database
-
-		// build txns
-		//algosdk.signLogicSigTransactionObject(txn,lsig)
 	}
 	function searchAmount() {
 		return borrowing;
@@ -1311,6 +1189,13 @@ export default function Body(props: {
 
 		return false;
 	}
+	function filterByIDLsig(item: any) {
+		if (item.txn && item.signers !== undefined) {
+			return true;
+		} //else if(item.signers === []) {return false}
+
+		return false;
+	}
 	async function myAlgoSign(
 		scenario1: Scenario,
 		mconnector: MyAlgoConnect,
@@ -1325,69 +1210,125 @@ export default function Body(props: {
 		try {
 			const txnsToSign = await scenario1(chain, address);
 			console.log(txnsToSign);
-			console.log('MyAlgo Signing');
 			// open modal
 			toggleModal();
 			setPendingRequest(true);
 
 			const flatTxns = txnsToSign.reduce((acc, val) => acc.concat(val), []);
-			console.log('Flatened txn');
-			const signedPartialTxns: Array<Array<Uint8Array | null>> = txnsToSign.map(
-				() => []
-			);
 
 			// sign transaction
 			const myAlgoConnect = new MyAlgoConnect();
 
 			const filtered = flatTxns.filter(filterByID);
-			console.log(filtered);
+
 			const txnsArray = filtered.map((a) => a.txn);
-			console.log(txnsArray);
-			let txIdd;
-			txnsArray.map((txn) => (txIdd = txn.txID().toString()));
-			const signedTxn = await myAlgoConnect.signTransaction(
+
+			const fullArray = flatTxns.map((a) => a.txn);
+
+			const signedTxs: Array<Uint8Array> = [];
+			const signedGroup: Array<Array<Uint8Array>> = [];
+			const signedTx = await myAlgoConnect.signTransaction(
 				txnsArray.map((txn) => txn.toByte())
 			);
-			console.log('Raw signed response:', signedTxn);
+			console.log('Raw signed response:', signedTx);
+			if (txnsArray.length !== fullArray.length) {
+				const filterLsig = flatTxns.filter(filterByIDLsig);
+				const LsigTxns = filterLsig.map((a) => a.txn);
 
-			const signedTxns: Uint8Array[][] = signedPartialTxns.map(
-				(signedPartialTxnsInternal, group) => {
-					return signedPartialTxnsInternal.map((stxn, groupIndex) => {
-						if (stxn) {
-							return stxn;
-						}
+				signedTxs.push(signedTx[0].blob);
 
-						return signTxnLogicSigWithTestAccount(
-							txnsToSign[group][groupIndex].txn
-						);
-					});
+				const LogicSigned = signTxnLogicSigWithTestAccount(LsigTxns[0]);
+				signedTxs.push(LogicSigned);
+				signedGroup.push(signedTxs);
+			} else {
+				for (const i in signedTx) {
+					signedTxs.push(signedTx[i].blob);
 				}
-			);
-			// Start Submitting
+
+				signedGroup.push(signedTxs);
+			}
+
+			const signedTxnInfo: Array<
+				Array<{
+					txID: string;
+					signingAddress?: string;
+					signature: string;
+				} | null>
+			> = signedGroup.map((signedInternal, group) => {
+				return signedInternal.map((rawSignedTxn, i) => {
+					if (rawSignedTxn == null) {
+						return null;
+					}
+
+					const signedTxn = algosdk.decodeSignedTransaction(rawSignedTxn);
+					const txn = signedTxn.txn as unknown as algosdk.Transaction;
+					const txID = txn.txID();
+					const unsignedTxID = txnsToSign[group][i].txn.txID();
+
+					if (txID !== unsignedTxID) {
+						throw new Error(
+							`Signed transaction at index ${i} differs from unsigned transaction. Got ${txID}, expected ${unsignedTxID}`
+						);
+					}
+
+					if (!signedTxn.sig) {
+						throw new Error(
+							`Signature not present on transaction at index ${i}`
+						);
+					}
+
+					return {
+						txID,
+						signingAddress: signedTxn.sgnr
+							? algosdk.encodeAddress(signedTxn.sgnr)
+							: undefined,
+						signature: Buffer.from(signedTxn.sig).toString('base64'),
+					};
+				});
+			});
+			const formattedResult: IResult = {
+				method: 'algo_signTxn',
+				body: signedTxnInfo,
+			};
 			setPendingRequest(false);
-			//setResult(formattedResult);
-
-			setPendingSubmissions(signedTxn.map(() => 0) as []);
+			setResult(formattedResult);
+			// start submitting
+			setPendingSubmissions(signedGroup.map(() => 0) as []);
 			// Submit the transaction
-			await testNetClientalgod.sendRawTransaction(signedTxn[0].blob).do();
-			try {
-				if (txIdd) {
-					// Wait for confirmation
-					let confirmedTxn = await algosdk.waitForConfirmation(
-						testNetClientalgod,
-						txIdd,
-						4
-					);
+			signedGroup.forEach(async (signedTxn, index) => {
+				try {
+					const confirmedRound = await apiSubmitTransactions(chain, signedTxn);
 
-					setPendingSubmissions(confirmedTxn['confirmed-round']);
-					console.log(`Transaction confirmed at round ${confirmedTxn}`);
+					setPendingSubmissions(
+						(prevPendingSubmissions) =>
+							prevPendingSubmissions.map((v, i) => {
+								if (index === i) {
+									return confirmedRound;
+								}
+								return v;
+							}) as []
+					);
+					console.log(`Transaction confirmed at round ${confirmedRound}`);
 					await LatestValue(address, chain, tokenType);
 					await LatestValue(address, chain, 1);
+				} catch (err) {
+					setPendingSubmissions(
+						(prevPendingSubmissions) =>
+							prevPendingSubmissions.map((v, i) => {
+								if (index === i) {
+									return err;
+								}
+								return v;
+							}) as []
+					);
+					console.error(`Error submitting transaction: `, err);
 				}
-			} catch (err) {
-				console.error(`Error submitting transaction: `, err);
-			}
-		} catch (err) {}
+			});
+		} catch (error) {
+			console.error(error);
+			setPendingRequest(false);
+			setResult(null);
+		}
 	}
 	const [holdSelect, setHoldSelect] = useState(0);
 	const [assetsSelected, setAssetsSelected] = useState(['77141623']);
@@ -1692,7 +1633,7 @@ export default function Body(props: {
 										className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
 										onClick={(e) => {
 											e.preventDefault();
-											maximumAmount(USDCtoken, 1, newAmount2);
+											maximumAmountRepay(NFTSelected, 1, newAmount2);
 										}}
 									>
 										MAX
@@ -1879,13 +1820,23 @@ export default function Body(props: {
 										key={name}
 										onClick={(e) => {
 											e.preventDefault();
-											signTxnLogic(
-												scenario1,
-												connector as WalletConnect,
-												address,
-												chain,
-												1
-											);
+											if (wc) {
+												signTxnLogic(
+													scenario1,
+													connector as WalletConnect,
+													address,
+													chain,
+													1
+												);
+											} else {
+												myAlgoSign(
+													scenario1,
+													mconnector as MyAlgoConnect,
+													address,
+													chain,
+													1
+												);
+											}
 										}}
 									>
 										{name}
@@ -1958,13 +1909,23 @@ export default function Body(props: {
 									key={name}
 									onClick={(e) => {
 										e.preventDefault();
-										signTxnLogic(
-											scenario1,
-											connector as WalletConnect,
-											address,
-											chain,
-											2
-										);
+										if (wc) {
+											signTxnLogic(
+												scenario1,
+												connector as WalletConnect,
+												address,
+												chain,
+												2
+											);
+										} else {
+											myAlgoSign(
+												scenario1,
+												mconnector as MyAlgoConnect,
+												address,
+												chain,
+												2
+											);
+										}
 									}}
 								>
 									{name}
