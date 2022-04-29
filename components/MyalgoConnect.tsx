@@ -1,10 +1,12 @@
 import MyAlgoConnect from '@randlabs/myalgo-connect';
 import algosdk, { Transaction } from 'algosdk';
-import { useState, useCallback, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
 	apiGetTxnParams,
+	apiSubmitTransactions,
 	ChainType,
 	testNetClientalgod,
+	testNetClientindexer,
 } from '../lib/helpers/api';
 //import {name,networks,methods} from '../public/d4t.json';
 import { create } from 'ipfs-http-client';
@@ -27,25 +29,12 @@ export default function MyalgoConnect(props: {
 	let rounds = round;
 	if (round == undefined) rounds = 10;
 
-	const bigAmount = amount.toString();
-	const newAmount = bigAmount + '000000';
+	const newAmount = amount * 1000000;
 	const [result, setResult] = useState(AssetsContext.addressVal);
 	const [validRound, setValidRound] = useState(2);
-	const [hashVal, setHashVal] = useState(new Uint8Array());
 	const [hashIpfs, setHashIpfs] = useState('');
 	const myAlgoConnect = new MyAlgoConnect({ disableLedgerNano: false });
-	const settings = {
-		shouldSelectOneAccount: false,
-		openManager: false,
-	};
 
-	const connect = async () => {
-		const accounts = await myAlgoConnect.connect(settings);
-		console.log(accounts);
-		const sender = accounts[0].address;
-		setResult(sender);
-		console.log(sender);
-	};
 	const [fileUrl, updateFileUrl] = useState(``);
 	console.log(AssetsContext.countState);
 	useEffect(() => {
@@ -56,17 +45,6 @@ export default function MyalgoConnect(props: {
 		}; */
 	}, [hashIpfs]);
 
-	async function onChange(e: any) {
-		const file = e.target.files[0];
-		try {
-			const added = await ipfs.add(file);
-			const url = `https://ipfs.infura.io/ipfs/${added.path}`;
-			updateFileUrl(url);
-			console.log(url);
-		} catch (error) {
-			console.log('Error uploading file: ', error);
-		}
-	}
 	const logic = async () => {
 		console.log('Stake function run!');
 		//const lsig = await tealProgramMake(amount);
@@ -101,6 +79,7 @@ export default function MyalgoConnect(props: {
 				closeOnClick: true,
 				pauseOnHover: true,
 				draggable: true,
+				toastId: 'info-ipfs',
 			});
 			const added = await ipfs.add(lsa);
 			const url = `https://ipfs.infura.io/ipfs/${added.path}`;
@@ -120,6 +99,7 @@ export default function MyalgoConnect(props: {
 				closeOnClick: true,
 				pauseOnHover: true,
 				draggable: true,
+				toastId: 'info-hash',
 			});
 			toast.success(`Uploaded to IPFS🎉`, {
 				position: 'top-right',
@@ -128,6 +108,7 @@ export default function MyalgoConnect(props: {
 				closeOnClick: true,
 				pauseOnHover: true,
 				draggable: true,
+				toastId: 'success-ipfs',
 			});
 			//console.log(hashVal);
 			/* const chunks = [];
@@ -143,6 +124,7 @@ export default function MyalgoConnect(props: {
 				closeOnClick: true,
 				pauseOnHover: true,
 				draggable: true,
+				toastId: 'error-sig',
 			});
 			console.log('Error uploading hash: ', error);
 		}
@@ -162,124 +144,126 @@ export default function MyalgoConnect(props: {
 		return va;
 	}
 	const stake = async () => {
-		const suggestedParams = await apiGetTxnParams(ChainType.TestNet);
-		const assetID = algosdk.encodeUint64(NFTColl);
-		const amount64 = algosdk.encodeUint64(Number(newAmount));
-		const validRound64 = algosdk.encodeUint64(validRound);
-		/* 	const lsaHashFull = new TextDecoder().decode(hashVal);
-		const lsaHashFullTo8 = lsaHashFull.substring(0, 8);
-		const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8)); */
-		console.log(hashIpfs);
-		const ipfsLsaHash = Uint8Array.from(Buffer.from(hashIpfs));
+		try {
+			const suggestedParams = await apiGetTxnParams(ChainType.TestNet);
+			const assetID = algosdk.encodeUint64(NFTColl);
+			const amount64 = algosdk.encodeUint64(Number(newAmount));
+			const validRound64 = algosdk.encodeUint64(validRound);
+			/* 	const lsaHashFull = new TextDecoder().decode(hashVal);
+			const lsaHashFullTo8 = lsaHashFull.substring(0, 8);
+			const lsaHash8 = Uint8Array.from(Buffer.from(lsaHashFullTo8)); */
+			console.log(hashIpfs);
+			const ipfsLsaHash = Uint8Array.from(Buffer.from(hashIpfs));
 
-		/*		const contractJSON = {name,networks,methods}
-		// since they happen to be the same
-		
-		// Parse the json file into an object, pass it to create an ABIContract object
-	const contract = new algosdk.ABIContract(JSON.parse(contractJSON.toString()));
-	// Utility function to return an ABIMethod by its name
-	function getMethodByName(name: string): algosdk.ABIMethod {
-		const m = contract.methods.find((mt: algosdk.ABIMethod) => {
-			return mt.name == name;
-		});
-		if (m === undefined) throw Error('Method undefined: ' + name);
-		return m;
-	}
-	const atcmyAlgoConnect = new MyAlgoConnect();
-		//const signedTxn = await atcmyAlgoConnect.signTransaction(txn.toByte());
-	const commonParams = {
-	appID:contract.networks["default"].appID,
-	sender:result,
-	suggestedParams:suggestedParams,
-	signer: algosdk.makeBasicAccountTransactionSigner(AssetsContext.maccounts)
-}
-const atc = new algosdk.AtomicTransactionComposer()
-const xids = algosdk.encodeUint64(77141623);//encodeToUint64(2)
-const aamt = algosdk.encodeUint64(Number(newAmount));
-const lvr = algosdk.encodeUint64(validRound);
-const lsa = Uint8Array.from(Buffer.from(hashIpfs));
-// Simple ABI Calls with standard arguments, return type
-atc.addMethodCall({
-	method: getMethodByName("earn"), methodArgs: [xids,aamt,lvr,lsa], ...commonParams
-}) 
-// Create a transaction
-const ptxn = new Transaction({
-    from: AssetsContext.maccounts,
-    to: AssetsContext.maccounts,
-    amount: 10000,
-    ...suggestedParams
-})
+			const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+				from: result,
+				to: result,
+				amount: 0,
+				assetIndex: NFTColl,
+				note: new Uint8Array(Buffer.from('Opt-in to NFT')),
+				suggestedParams,
+			});
+			const txn2 = algosdk.makeApplicationNoOpTxnFromObject({
+				from: result,
+				appIndex: APP_ID,
+				appArgs: [
+					Uint8Array.from(Buffer.from('lend')),
+					assetID,
+					amount64,
+					ipfsLsaHash,
+					validRound64,
+				],
+				note: ipfsLsaHash,
+				suggestedParams,
+			});
+			const txns: Array<algosdk.Transaction> = [];
+			const signedTxs: Array<Uint8Array> = [];
+			const signedGroup: Array<Array<Uint8Array>> = [];
 
-// Construct TransactionWithSigner
-const tws = {txn: ptxn, signer: atcmyAlgoConnect.signTransaction}
+			const myAlgoConnect = new MyAlgoConnect();
 
-// Pass TransactionWithSigner to ATC
-atc.addTransaction(tws)
-*/
-		const txn = algosdk.makeApplicationNoOpTxnFromObject({
-			from: result,
-			appIndex: APP_ID,
-			appArgs: [
-				Uint8Array.from(Buffer.from('lend')),
-				assetID,
-				amount64,
-				ipfsLsaHash,
-				validRound64,
-			],
-			suggestedParams,
-		});
+			const optin = await checkAssetOptin(NFTColl, result);
+			if ((optin.length = 1 && !optin[0]['deleted'])) {
+				txns.push(txn2);
+				const signedTx = await myAlgoConnect.signTransaction(
+					txns.map((txn) => txn.toByte())
+				);
+				console.log(signedTx);
+				for (const i in signedTx) {
+					signedTxs.push(signedTx[i].blob);
+				}
 
-		const myAlgoConnect = new MyAlgoConnect();
-		const signedTxn = await myAlgoConnect.signTransaction(txn.toByte());
-		console.log(signedTxn);
-		let txId = txn.txID().toString();
-		toast.info(`Transaction ${txId}`, {
-			position: 'top-right',
-			autoClose: false,
-			hideProgressBar: false,
-			closeOnClick: true,
-			pauseOnHover: true,
-			draggable: true,
-		});
-		// Submit the transaction
-		await testNetClientalgod.sendRawTransaction(signedTxn.blob).do();
+				signedGroup.push(signedTxs);
+				// Submit the transaction
+				toast.info(`Submitting...`, {
+					position: 'top-right',
+					autoClose: 3000,
+					hideProgressBar: false,
+					closeOnClick: true,
+					pauseOnHover: true,
+					draggable: true,
+					toastId: 'info-id',
+				});
+				return await submitTransaction(signedGroup);
+			}
 
-		// Wait for confirmation
-		let confirmedTxn = await algosdk.waitForConfirmation(
-			testNetClientalgod,
-			txId,
-			4
-		);
-		toast.success(`Confirmed in round ${confirmedTxn['confirmed-round']}`, {
-			position: 'top-right',
-			autoClose: false,
-			hideProgressBar: false,
-			closeOnClick: true,
-			pauseOnHover: true,
-			draggable: true,
-		});
-		//Get the completed Transaction
-		console.log(
-			'Transaction ' +
-				txId +
-				' confirmed in round ' +
-				confirmedTxn['confirmed-round']
-		);
+			txns.push(txn1);
+			txns.push(txn2);
+
+			const signedTx = await myAlgoConnect.signTransaction(
+				txns.map((txn) => txn.toByte())
+			);
+			console.log(signedTx);
+			for (const i in signedTx) {
+				signedTxs.push(signedTx[i].blob);
+			}
+
+			signedGroup.push(signedTxs);
+
+			// Submit the transaction
+			return await submitTransaction(signedGroup);
+		} catch (error) {
+			console.log(error);
+			toast.error(`Request Rejected`, {
+				position: 'top-right',
+				autoClose: 8000,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
+		}
 	};
-
-	function writeUserData(sender: any, hash: Uint8Array, intUrl: Uint8Array) {
-		/* const db = getDatabase(firebase);
-		const postListRef = ref(db, 'users');
-		const newPostRef = push(postListRef);
-		set(newPostRef, {
-			useraddress: sender,
-			uint8_hash: hash,
-			uint8_lsa: intUrl,
-		}); */
-		//set(ref(db, 'users/' + lsaId), {
-		//	useraddress: hash,
-		//	uint8_lsa: intUrl,
-		//});const string = new TextDecoder().decode(hash);
+	async function submitTransaction(signedGroup: Array<Array<Uint8Array>>) {
+		signedGroup.forEach(async (signedTxn, index) => {
+			try {
+				const confirmedRound = await apiSubmitTransactions(
+					ChainType.TestNet,
+					signedTxn
+				);
+				console.log(`Transaction confirmed at round ${confirmedRound}`);
+				toast.success(`Confirmed in round ${confirmedRound}`, {
+					position: 'top-right',
+					autoClose: 10000,
+					hideProgressBar: false,
+					closeOnClick: true,
+					pauseOnHover: true,
+					draggable: true,
+					toastId: 'success-id',
+				});
+			} catch (error) {
+				console.error(`Error submitting transaction: `, error);
+				toast.error(`Error submitting transaction`, {
+					position: 'top-right',
+					autoClose: 10000,
+					hideProgressBar: false,
+					closeOnClick: true,
+					pauseOnHover: true,
+					draggable: true,
+					toastId: 'error-id',
+				});
+			}
+		});
 	}
 
 	return (
@@ -293,24 +277,27 @@ atc.addTransaction(tws)
 				draggable
 				pauseOnHover
 			/>
-			<button
-				onClick={(e) => {
-					e.preventDefault();
-					stake();
-				}}
-				className='btn'
-			>
-				Stake - Promise
-			</button>
-			<button
-				onClick={(e) => {
-					e.preventDefault();
-					logic();
-				}}
-				className='btn'
-			>
-				Logic Sign
-			</button>
+			{hashIpfs ? (
+				<button
+					onClick={(e) => {
+						e.preventDefault();
+						stake();
+					}}
+					className='bg-gradient-to-r from-gray-100 to-red-300 p-3 rounded-md ring-gray-200 text-sm text-gray-800 hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md'
+				>
+					Stake - Promise
+				</button>
+			) : (
+				<button
+					onClick={(e) => {
+						e.preventDefault();
+						logic();
+					}}
+					className='btn'
+				>
+					Sign
+				</button>
+			)}
 		</>
 	);
 }
@@ -321,4 +308,11 @@ function getUint8Args(amount: number, round: number) {
 		algosdk.encodeUint64(round),
 		algosdk.encodeUint64(APP_ID),
 	];
+}
+export async function checkAssetOptin(assetId: number, address: string) {
+	const accountInfo = await testNetClientindexer
+		.lookupAccountAssets(address)
+		.assetId(assetId)
+		.do();
+	return accountInfo['assets'];
 }

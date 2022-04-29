@@ -28,7 +28,7 @@ export default async function handle(
 	};
 	//encryption/public
 	//configuration wallets
-	console.log('Logging');
+	//console.log('Logging');
 	try {
 		switch (req.method) {
 			case 'GET': {
@@ -37,7 +37,7 @@ export default async function handle(
 					options
 				);
 				const data = await response.json();
-				console.log(data);
+				//console.log(data);
 				return res.status(200).json(data);
 			}
 			case 'POST': {
@@ -55,7 +55,7 @@ export default async function handle(
 							optionsP
 						);
 						const data = await response.json();
-						console.log(data);
+						//console.log(data);
 						shouldRetry = false;
 						return res.status(201).json(data);
 					} catch (error) {

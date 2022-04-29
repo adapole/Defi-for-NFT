@@ -42,13 +42,13 @@ export default function AppOptin(props: {
 		const accountInfo = await testNetClientindexer
 			.lookupAccountAppLocalStates(address)
 			.do();
-		console.log(accountInfo['apps-local-states']);
+		//console.log(accountInfo['apps-local-states']);
 		return accountInfo['apps-local-states'];
 	};
 	const optin = async () => {
 		const applications = await checkOptinIndexer();
 		if (applications === null) {
-			console.log('Optin');
+			//console.log('Optin');
 			// open Modal and prompt to optin
 			toggleModal();
 
@@ -56,10 +56,9 @@ export default function AppOptin(props: {
 		}
 		for (let i = 0; i < applications.length; i++) {
 			if (applications[i]['id'] === APP_ID && !applications[i]['deleted']) {
-				console.log('Opted in already');
 				return;
 			}
-			console.log('Opt in...');
+			//console.log('Opt in...');
 			// open Modal and prompt to optin
 			toggleModal();
 		}

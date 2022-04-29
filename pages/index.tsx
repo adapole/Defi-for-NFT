@@ -31,6 +31,8 @@ import MyAlgoConnect from '@randlabs/myalgo-connect';
 import Circle from '../components/Circle';
 import { APP_ID } from '../lib/helpers/constants';
 import FrontPage from '../components/FrontPage';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const AppOptin = dynamic(() => import('../components/AppOptin'), {
 	ssr: false,
 });
@@ -467,7 +469,6 @@ class Home extends React.Component<unknown, IAppState> {
 		}
 		const applications = await this.checkOptin();
 		if (applications === null) {
-			console.log('Optin');
 			// open Modal and prompt to optin, if not already
 			this.toggleModal();
 
@@ -477,10 +478,9 @@ class Home extends React.Component<unknown, IAppState> {
 		}
 		for (let i = 0; i < applications.length; i++) {
 			if (applications[i]['id'] === APP_ID && !applications[i]['deleted']) {
-				console.log('Opted in already');
 				return;
 			}
-			console.log('Opt in...');
+			//console.log('Opt in...');
 			// open Modal and prompt to optin, if not already
 			this.toggleModal();
 
@@ -499,7 +499,7 @@ class Home extends React.Component<unknown, IAppState> {
 				accounts,
 				address,
 			});
-			console.log(address);
+
 			try {
 				// get account balances
 				const assets = await apiGetAccountAssets(chain, address);
@@ -515,37 +515,49 @@ class Home extends React.Component<unknown, IAppState> {
 	};
 	public returnWallet = async (data: any) => {
 		if (!!data) {
-			console.log(data.connector.check());
-			const accounts = await data.connector.connect();
-			const connector = data.connector.provider;
-			console.log(connector);
+			try {
+				console.log(data.connector.check());
+				const accounts = await data.connector.connect();
+				const connector = data.connector.provider;
+				console.log(connector);
 
-			const a = data.connector;
-			console.log(a);
-			console.log(accounts);
+				const a = data.connector;
+				console.log(a);
+				console.log(accounts);
 
-			if (a['provider']['protocol'] === 'wc') {
-				// subscribe to events, if walletconnect
-				//console.log(wprovider);
-				await this.walletConnectInit();
-			} else if (a['provider']['url']) {
-				const onClearResponse = (): void => {
-					this.setState({
-						connected: false,
-						accounts: [],
-						address: '',
-					});
-				};
-				console.log('should NOT be here walletconnect');
-				try {
-					await this.setStateAsync({
-						...INITIAL_STATE,
-						mconnector: data.connector,
-					});
-					await this.connectToMyAlgo(accounts);
-				} catch (err) {
-					console.error(err);
+				if (a['provider']['protocol'] === 'wc') {
+					// subscribe to events, if walletconnect
+					//console.log(wprovider);
+					await this.walletConnectInit();
+				} else if (a['provider']['url']) {
+					const onClearResponse = (): void => {
+						this.setState({
+							connected: false,
+							accounts: [],
+							address: '',
+						});
+					};
+
+					try {
+						await this.setStateAsync({
+							...INITIAL_STATE,
+							mconnector: data.connector,
+						});
+						await this.connectToMyAlgo(accounts);
+					} catch (err) {
+						console.error(err);
+					}
 				}
+			} catch (error) {
+				console.error(error);
+				toast.error(`Window not loaded`, {
+					position: 'top-left',
+					autoClose: 4000,
+					hideProgressBar: false,
+					closeOnClick: true,
+					pauseOnHover: true,
+					draggable: true,
+				});
 			}
 		}
 	};
@@ -602,6 +614,15 @@ class Home extends React.Component<unknown, IAppState> {
 						)}
 					</header>
 					<div>
+						<ToastContainer
+							hideProgressBar={false}
+							newestOnTop
+							closeOnClick
+							rtl={false}
+							pauseOnFocusLoss
+							draggable
+							pauseOnHover
+						/>
 						{/* Body */}
 						{!address && !assets.length ? (
 							<>

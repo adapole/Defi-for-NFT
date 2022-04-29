@@ -35,7 +35,7 @@ export default async function handle(
 				});
 			}
 
-			console.log(values);
+			//console.log(values);
 			//console.log(JSON.stringify(values));
 			return res.status(201).json(values);
 		}

@@ -57,7 +57,6 @@ import MyAlgoConnect from '@randlabs/myalgo-connect';
 import Faucets from './Faucets';
 import Fiat from './Fiat';
 import AsyncSelect from 'react-select/async';
-import { group } from 'console';
 
 const DynamicComponentWithNoSSR = dynamic(() => import('./MyalgoConnect'), {
 	ssr: false,
@@ -74,102 +73,14 @@ interface IResult {
 	>;
 }
 
-const jusdAssetTransferTxn: Scenario = async (
-	chain: ChainType,
-	address: string
-): Promise<ScenarioReturnType> => {
-	const suggestedParams = await apiGetTxnParams(chain);
-	const transferAssetIndex = 79077841;
-	const optInAssetIndex = transferAssetIndex;
-
-	const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-		from: address,
-		to: address,
-		amount: 0,
-		assetIndex: optInAssetIndex,
-		note: new Uint8Array(Buffer.from('Opt-in to jUSD')),
-		suggestedParams,
-	});
-
-	const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-		from: 'XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY',
-		to: address,
-		amount: 10000000,
-		assetIndex: transferAssetIndex,
-		note: new Uint8Array(Buffer.from('dispencer 10 jUSD')),
-		suggestedParams,
-	});
-
-	const txnsToSign = [{ txn: txn1 }, { txn: txn2, signers: [] }];
-
-	algosdk.assignGroupID(txnsToSign.map((toSign) => toSign.txn));
-	return [txnsToSign];
-};
-const LFTAssetTransferTxn: Scenario = async (
-	chain: ChainType,
-	address: string
-): Promise<ScenarioReturnType> => {
-	const suggestedParams = await apiGetTxnParams(chain);
-
-	const txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-		from: address,
-		to: address,
-		amount: 0,
-		assetIndex: 77141623,
-		note: new Uint8Array(Buffer.from('Opt-in to LFT-Jina')),
-		suggestedParams,
-	});
-
-	const txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-		from: 'XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY',
-		to: address,
-		amount: 4,
-		assetIndex: 77141623,
-		note: new Uint8Array(Buffer.from('dispencer 4 LFT-Jina')),
-		suggestedParams,
-	});
-
-	const txnsToSign = [{ txn: txn1 }, { txn: txn2, signers: [] }];
-
-	algosdk.assignGroupID(txnsToSign.map((toSign) => toSign.txn));
-	return [txnsToSign];
-};
-const scenarios1: Array<{ name: string; scenario1: Scenario }> = [
-	{
-		name: 'Dispense',
-		scenario1: jusdAssetTransferTxn,
-	},
-];
-const scenarios2: Array<{ name: string; scenario1: Scenario }> = [
-	{
-		name: 'Dispense',
-		scenario1: LFTAssetTransferTxn,
-	},
-];
-const singleAppOptIn: Scenario = async (
-	chain: ChainType,
-	address: string
-): Promise<ScenarioReturnType> => {
-	const suggestedParams = await apiGetTxnParams(chain);
-
-	const appIndex = 77600054;
-	const assetID = algosdk.encodeUint64(77141623);
-	const amount = algosdk.encodeUint64(3);
-	// change appIndex to BigEndian
-	const txn = algosdk.makeApplicationOptInTxnFromObject({
-		from: address,
-		appIndex,
-		note: new Uint8Array(Buffer.from('OptIn App')),
-		appArgs: [Uint8Array.from(Buffer.from('borrow')), assetID, amount],
-		suggestedParams,
-	});
-
-	const txnsToSign = [{ txn }];
-	return [txnsToSign];
-};
 interface iOption {
 	label: string;
 	value: string;
+}
+interface iLender {
+	xids: Array<number>;
+	aamt: number;
+	lvr: number;
 }
 
 export function replacer(key: any, value: any) {
@@ -202,6 +113,63 @@ export default function Body(props: {
 			.do();
 		//console.log(accountInfo['apps-local-states']);
 		return accountInfoResponse;
+	};
+	const [displayLend, setDisplayLend] = useState<iLender>({
+		xids: [],
+		aamt: 0,
+		lvr: 0,
+	});
+	const checkAllowedAmount = async () => {
+		const accountInfoResponse = await checkAppLocalState();
+		if (accountInfoResponse === null) return;
+
+		for (
+			let n = 0;
+			n < accountInfoResponse['apps-local-states'][0]['key-value'].length;
+			n++
+		) {
+			let kv = accountInfoResponse['apps-local-states'][0]['key-value'];
+			let ky = kv[n]['key'];
+
+			// Allowed assets
+			if (ky === 'eGlkcw==') {
+				// Extract bytes and compare to assetid
+				let xids = kv[n]['value']['bytes'];
+
+				let buff = Buffer.from(xids, 'base64');
+				let values: Array<number> = [];
+				for (let n = 0; n < buff.length; n = n + 8) {
+					// Array offset, then check value
+					values.push(buff.readUIntBE(n, 8));
+				}
+				setDisplayLend((prevState) => {
+					return { ...prevState, xids: values };
+				});
+			}
+			// Last valid round, exp
+			if (ky === 'bHZy') {
+				// Check last valid round, lvr
+
+				let lvr = kv[n]['value']['uint'];
+
+				setDisplayLend((prevState) => {
+					return { ...prevState, lvr: lvr };
+				});
+			}
+			if (ky === 'YWFtdA==') {
+				// Check amount allowed, then check available amount in account
+				let aamt = kv[n]['value']['uint'];
+
+				setDisplayLend((prevState) => {
+					return {
+						...prevState,
+						aamt: Number(formatBigNumWithDecimals(aamt, 6)),
+					};
+				});
+				// Check assetId balance
+			}
+		}
+		return;
 	};
 	const ipfs = create({
 		host: 'ipfs.infura.io',
@@ -318,9 +286,7 @@ export default function Body(props: {
 									const assetBalance =
 										accountAssetInfo['asset-holding']['amount'];
 									console.log(assetBalance);
-									const amountborrowing = Number(
-										Math.floor(amount).toString() + '000000'
-									);
+									const amountborrowing = amount * 1000000;
 									if (
 										assetBalance >= amountborrowing &&
 										kyv > amountborrowing
@@ -639,7 +605,7 @@ export default function Body(props: {
 		bodyamounts: string
 	) {
 		const accountInfoResponse = await checkAppLocalState();
-		if (accountInfoResponse === null) return;
+		if (accountInfoResponse === null) return 0;
 
 		for (
 			let n = 0;
@@ -668,12 +634,12 @@ export default function Body(props: {
 				focus();
 				if (!bodyamounts) {
 					setUserInput(Number(formatBigNumWithDecimals(value, 6)));
-					return;
+					return Number(formatBigNumWithDecimals(value, 6));
 				}
 				setUserInput(0);
 			}
 		}
-		return;
+		return 0;
 	}
 	function Borrow(e: any) {
 		e.preventDefault();
@@ -1534,10 +1500,11 @@ export default function Body(props: {
 								className={`last:pr-24 border-b-2 border-transparent pb-0.5 cursor-pointer transition duration-100 transform hover:scale-105 hover:text-indigo-500 hover:border-indigo-500 ${
 									openTab === 3 && 'text-indigo-500 border-indigo-500'
 								}`}
-								onClick={(e) => {
+								onClick={async (e) => {
 									e.preventDefault();
 									setOpenTab(3);
 									setUserInput(0);
+									await checkAllowedAmount();
 								}}
 							>
 								Earn
@@ -1743,35 +1710,51 @@ export default function Body(props: {
 							</form>
 
 							<div className='flex flex-col w-1/2 space-y-2 justify-center mt-7 sm:space-y-0 sm:flex-row sm:space-x-4'>
-								{Borrowscenarios.map(({ name, scenario1 }) => (
+								{addressLogicSig ? (
+									<>
+										{Borrowscenarios.map(({ name, scenario1 }) => (
+											<button
+												className='btn'
+												key={name}
+												onClick={(e) => {
+													e.preventDefault();
+													setSwitcher(1);
+													if (wc) {
+														signTxnLogic(
+															scenario1,
+															connector as WalletConnect,
+															address,
+															chain,
+															0
+														);
+													} else {
+														myAlgoSign(
+															scenario1,
+															mconnector as MyAlgoConnect,
+															address,
+															chain,
+															0
+														);
+													}
+												}}
+											>
+												{name}
+											</button>
+										))}
+									</>
+								) : (
 									<button
-										className='btn'
-										key={name}
 										onClick={(e) => {
 											e.preventDefault();
-											setSwitcher(1);
-											if (wc) {
-												signTxnLogic(
-													scenario1,
-													connector as WalletConnect,
-													address,
-													chain,
-													0
-												);
-											} else {
-												myAlgoSign(
-													scenario1,
-													mconnector as MyAlgoConnect,
-													address,
-													chain,
-													0
-												);
-											}
+											LatestValue(address, chain, 0);
+											borrowIndexer(NFTSelected.id, searchAmount());
 										}}
+										className='btn'
 									>
-										{name}
+										Search Lenders
 									</button>
-								))}
+								)}
+
 								{/* <button
 								onClick={(e) => {
 									e.preventDefault();
@@ -1781,16 +1764,6 @@ export default function Body(props: {
 							>
 								Increase Collateral
 							</button> */}
-								<button
-									onClick={(e) => {
-										e.preventDefault();
-										LatestValue(address, chain, 0);
-										borrowIndexer(NFTSelected.id, searchAmount());
-									}}
-									className='btn'
-								>
-									Search Lenders
-								</button>
 							</div>
 						</>
 					)}
@@ -1811,6 +1784,10 @@ export default function Body(props: {
 										className='flex-grow focus:outline-none bg-[#FAFAFA]'
 									/>
 								</span>
+								<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
+									<span className='pr-2 text-indigo-400'>Amount to Repay</span>
+									<span className='pl-2 text-gray-500'>2.06</span>
+								</p>
 							</div>
 
 							<div className='flex flex-col w-1/2 space-y-2 justify-center mt-8 sm:space-y-0 sm:flex-row sm:space-x-4'>
@@ -1898,6 +1875,16 @@ export default function Body(props: {
 										/>
 									)}
 								</assetsContext.Provider>
+							</div>
+							<div className='flex w-full max-w-2xl items-center justify-evenly rounded-lg shadow-md p-6 mt-4 hover:cursor-pointer group'>
+								<div className='flex justify-between items-center'>
+									{displayLend.aamt > 0 && (
+										<h1 className='uppercase text-sm sm:text-base tracking-wide'>
+											{'LVR'} {displayLend.lvr} {'ASA'} {displayLend.xids}{' '}
+											{'USDC'} {displayLend.aamt}
+										</h1>
+									)}
+								</div>
 							</div>
 						</>
 					)}
