@@ -580,9 +580,9 @@ class Home extends React.Component<unknown, IAppState> {
 		return (
 			<div>
 				<Head>
-					<title>Next App</title>
-					<meta name='name' content='Defi for NFT' />
-					<meta name='description' content='Connect to next app' />
+					<title>DeFi4 Dapp</title>
+					<meta name='name' content='Defi4 NFT' />
+					<meta name='description' content='Connect to Defi4 dapp' />
 					<link rel='icon' href='/favicon.ico' />
 				</Head>
 
