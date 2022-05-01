@@ -246,9 +246,6 @@ export default function AppOptin(props: {
 									{name}
 								</button>
 							))}
-							{/* <p className='mt-4'>
-								{'Approve or reject using myalgowallet'}
-							</p> */}
 						</div>
 					</div>
 				) : result ? (

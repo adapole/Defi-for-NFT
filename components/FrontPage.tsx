@@ -164,29 +164,6 @@ export default function FrontPage({}: Props) {
 					</div>
 				</div>
 			</section>
-			<section className='relative'>
-				<div className=' text-white min-h-screen overflow-hidden'>
-					<div className='inset-y-0 left-0 bg-gradient-to-r from-black px-8 py-16 w-screen -z-10'>
-						<div className=' max-w-xl grid grid-cols-1 gap-4'>
-							<div className='w-12'>
-								{/* <ReactLogo className="fill-white" /> */}
-							</div>
-							<h2 className='text-xl uppercase font-bold'>DeFi-4 NFT</h2>
-							<h1 className='text-6xl font-bold'>The DeFi-4 Team</h1>
-							<p className='text-lg'>
-								Liquidity and trade volume are two of the most pressing issues
-								in the NFT industry right now. To remedy this difficulty, the
-								NFT market needs DeFi. The DeFi-4 NFT team has been working
-								hard, with the firm belief that this will facilitate mass
-								adoption of NFTs
-							</p>
-							{/* <button className='bg-gradient-to-r from-pink-600 to-orange-600 py-3 px-6 text-lg rounded-md w-48 right-0'>
-								Start Dapp
-							</button> */}
-						</div>
-					</div>
-				</div>
-			</section>
 		</div>
 	);
 }

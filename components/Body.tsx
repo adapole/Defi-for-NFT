@@ -1786,7 +1786,7 @@ export default function Body(props: {
 								</span>
 								<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
 									<span className='pr-2 text-indigo-400'>Amount to Repay</span>
-									<span className='pl-2 text-gray-500'>2.06</span>
+									<span className='pl-2 text-gray-500'>0</span>
 								</p>
 							</div>
 

@@ -11,7 +11,12 @@ import {
 	Stepper,
 	Typography,
 	Checkbox,
+	InputLabel,
+	MenuItem,
+	FormHelperText,
+	FormControl,
 } from '@mui/material';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import {
 	Formik,
 	Form,
@@ -26,8 +31,11 @@ import { CardDetails, encryptCard } from '../lib/helpers/encryptCard';
 import CWalletList from './CWalletList';
 import { addressContext } from '../lib/helpers/addressContext';
 import CCardList from './CCardList';
-import Select from 'react-select';
+//import Select from 'react-select';
 import Modal from './Modal';
+import CChainAddress from './CChainAddress';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 type Props = {
 	address: string;
@@ -64,7 +72,7 @@ export default function Circle({ address }: Props) {
 	const [result, setResult] = useState(false);
 	const [pendingRequest, setPendingRequest] = useState(false);
 	const [pendingSubmissions, setPendingSubmissions] = useState([]);
-	const [isWalletAdd, setIsWalletAdd] = useState(true);
+	const [isWalletAdd, setIsWalletAdd] = useState(0);
 	const [changeAddress, setChangeAddress] = useState(true);
 
 	const [description, setDescription] = useState('');
@@ -75,6 +83,25 @@ export default function Circle({ address }: Props) {
 		cvv: '123',
 	});
 	const [expiry, setExpiry] = useState<Expiry>({ expMonth: 1, expYear: 2025 });
+	const chainaddressCreate = async (
+		walletid: string,
+		chainSelected: string
+	) => {
+		const response = await fetch('/api/cchainaddress', {
+			method: 'POST',
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				walletid: walletid,
+				chainSelected: chainSelected,
+			}),
+		});
+		const data = await response.json();
+		console.log(data);
+		MessageSuccess();
+	};
 
 	const walletCreate = async (name: string, algoaddress: string) => {
 		/* let name = description;
@@ -154,6 +181,15 @@ export default function Circle({ address }: Props) {
 		});
 		const data = await response.json();
 		console.log(data);
+		toast.success(`Payment submitted successfully`, {
+			position: 'top-right',
+			autoClose: 10000,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+			toastId: 'success-id',
+		});
 	};
 
 	const validate = (values: any) => {
@@ -204,6 +240,15 @@ export default function Circle({ address }: Props) {
 				ccardid: cardId,
 			}}
 		>
+			<ToastContainer
+				hideProgressBar={false}
+				newestOnTop
+				closeOnClick
+				rtl={false}
+				pauseOnFocusLoss
+				draggable
+				pauseOnHover
+			/>
 			<Card>
 				<CardContent>
 					<FormikStepper
@@ -231,7 +276,7 @@ export default function Circle({ address }: Props) {
 										color='primary'
 										onClick={(e) => {
 											e.preventDefault();
-											setIsWalletAdd(true);
+											setIsWalletAdd(0);
 											openModal();
 										}}
 									>
@@ -248,7 +293,7 @@ export default function Circle({ address }: Props) {
 									color='primary'
 									onClick={(e) => {
 										e.preventDefault();
-										setIsWalletAdd(false);
+										setIsWalletAdd(1);
 										openModal();
 									}}
 								>
@@ -373,11 +418,50 @@ export default function Circle({ address }: Props) {
 				</div> */}
 				</>
 			</Card>
+			<Card sx={{ position: 'sticky', marginTop: 10 }}>
+				<CardContent>
+					<Formik2
+						initialValues={{
+							cvv: '',
+						}}
+						onSubmit={(values) => {
+							console.log('values', values);
+						}}
+					>
+						<FormikStep label='Blockchain swap'>
+							<Box paddingBottom={2}>
+								<CWalletList />
+							</Box>
+							<Box paddingBottom={2} justifyContent='right'>
+								<div className='right-1/2 left-1/2'>
+									<Button
+										disabled={walletId === ''}
+										variant='contained'
+										color='primary'
+										onClick={(e) => {
+											e.preventDefault();
+											setIsWalletAdd(2);
+											openModal();
+										}}
+									>
+										Generate deposit address
+									</Button>
+								</div>
+							</Box>
+						</FormikStep>
+						<FormikStep label='Blockchain Addresses'>
+							<Box paddingBottom={2}>
+								<CChainAddress />
+							</Box>
+						</FormikStep>
+					</Formik2>
+				</CardContent>
+			</Card>
 			<Modal show={showModal} toggleModal={toggleModal}>
 				{pendingRequest ? (
 					<div className='w-full relative break-words'>
 						{/* Make the form here, check if Add wallet or Card */}
-						{isWalletAdd ? (
+						{isWalletAdd === 0 ? (
 							<>
 								<div className='h-full min-h-2 flex flex-col justify-center items-center break-words'>
 									<Formik1
@@ -456,7 +540,7 @@ export default function Circle({ address }: Props) {
 									</Formik1>
 								</div>
 							</>
-						) : (
+						) : isWalletAdd === 1 ? (
 							<>
 								<div className='mt-1 mb-0.5 text-gray-400 font-bold text-xl'>
 									{'Add a Card'}
@@ -650,17 +734,62 @@ export default function Circle({ address }: Props) {
 									</Formik1>
 								</div>
 							</>
+						) : (
+							<>
+								<div className='h-full min-h-2 flex flex-col justify-center items-center break-words'>
+									<Formik1
+										initialValues={{
+											walletid: walletId,
+											chainSelected: '',
+										}}
+										onSubmit={async (values) => {
+											await chainaddressCreate(
+												values.walletid,
+												values.chainSelected
+											);
+											console.log(values);
+										}}
+									>
+										<FormikStep label='Select deposit chain'>
+											<FormControl sx={{ m: 1, minWidth: 120 }}>
+												<Field
+													name='chainSelected'
+													component={TextField}
+													label='Chain'
+													placeholder='Chain'
+													select
+												>
+													<MenuItem value='ETH'>Ethereum</MenuItem>
+													<MenuItem value='AVAX'>Avalanche</MenuItem>
+													<MenuItem value='SOL'>Solana</MenuItem>
+													<MenuItem value='FLOW'>Flow</MenuItem>
+													<MenuItem value='HBAR'>Hedera</MenuItem>
+													<MenuItem value='XLM'>Stellar</MenuItem>
+													<MenuItem value='TRX'>TRON</MenuItem>
+												</Field>
+												<FormHelperText>
+													Create a new blockchain deposit address
+												</FormHelperText>
+											</FormControl>
+										</FormikStep>
+									</Formik1>
+								</div>
+							</>
 						)}
 					</div>
 				) : result ? (
 					<div className='w-full relative break-words'>
-						{isWalletAdd ? (
+						{isWalletAdd === 0 ? (
 							<div className='mt-1 mb-0 font-bold text-xl'>
 								{'🎉Circle wallet created🎉'}
 							</div>
-						) : (
+						) : isWalletAdd === 1 ? (
 							<div className='mt-1 mb-0 font-bold text-xl'>
 								{'Your card has been successfully added.🎉'}
+							</div>
+						) : (
+							<div className='mt-1 mb-0 font-bold text-xl'>
+								{'🎉Chain address created🎉'}
 							</div>
 						)}
 						{/* Show the form result with <pre> */}
@@ -750,7 +879,82 @@ export const Formik1 = ({ children, ...props }: FormikConfig<FormikValues>) => {
 		</Formik>
 	);
 };
+export const Formik2 = ({ children, ...props }: FormikConfig<FormikValues>) => {
+	const childrenArray = React.Children.toArray(
+		children
+	) as React.ReactElement<FormikStepProps>[];
+	const [step, setStep] = useState(0);
+	const currentChild = childrenArray[step];
+	const [completed, setCompleted] = useState(false);
+	function isLastStep() {
+		return step === childrenArray.length - 1;
+	}
+	return (
+		<Formik
+			{...props}
+			validationSchema={currentChild.props.validationSchema}
+			onSubmit={async (values, helpers) => {
+				if (isLastStep()) {
+					//await props.onSubmit(values, helpers);
+					setCompleted(true);
+				} else {
+					setStep((s) => s + 1);
 
+					helpers.setTouched({});
+				}
+			}}
+		>
+			{({ isSubmitting }) => (
+				<Form autoComplete='off'>
+					<Stepper alternativeLabel activeStep={step}>
+						{childrenArray.map((child, index) => (
+							<Step
+								key={child.props.label}
+								completed={step > index || completed}
+							>
+								<StepLabel>{child.props.label}</StepLabel>
+							</Step>
+						))}
+					</Stepper>
+
+					{currentChild}
+					<Grid container spacing={2}>
+						{step > 0 ? (
+							<Grid item>
+								<Button
+									disabled={isSubmitting}
+									variant='contained'
+									color='primary'
+									onClick={(e) => {
+										e.preventDefault();
+										setStep((s) => s - 1);
+									}}
+								>
+									Back
+								</Button>
+							</Grid>
+						) : null}
+						<Grid item>
+							{step < 1 ? (
+								<Button
+									startIcon={
+										isSubmitting ? <CircularProgress size='1rem' /> : null
+									}
+									disabled={isSubmitting}
+									variant='contained'
+									color='primary'
+									type='submit'
+								>
+									{isSubmitting ? 'Submitting' : isLastStep() ? null : 'Next'}
+								</Button>
+							) : null}
+						</Grid>
+					</Grid>
+				</Form>
+			)}
+		</Formik>
+	);
+};
 export interface FormikStepProps
 	extends Pick<FormikConfig<FormikValues>, 'children' | 'validationSchema'> {
 	label: string;

@@ -126,12 +126,12 @@ export const addPayment = async (
 				algowallet,
 			},
 			data: {
-				payments: [
-					{
+				payments: {
+					push: {
 						paymentid: updateData,
 						walletid: walletId,
 					},
-				],
+				},
 			},
 		});
 		console.log(payment);
