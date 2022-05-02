@@ -2,7 +2,47 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
-First, run the development server:
+First, git clone the repository and install all dependencies:
+
+```bash
+git clone https://github.com/adapole/Defi-for-NFT.git
+cd nft-dapp
+npm install
+```
+
+Setup the .env and/or .env.local variables. First create a purestake account for algorand and set the api-key to the .env.local variable
+
+```bash
+NEXT_PUBLIC_PURESTAKE_API=YOUR-PURESTAKE-API-KEY
+TESTACCOUNT_MENMONIC=''
+```
+
+Next create a mongodb database, since we use Prisma it's adviced to use mongodb Atlas but it can work for local db too. For mongodb atlas it will look like:
+
+```bash
+DATABASE_URL="mongodb+srv://someusername:somepassword@somecluster.something.mongodb.net/<DB-NAME>?retryWrites=true&w=majority"
+```
+
+Initialize Prisma and push the database models to your database
+
+```bash
+npx prisma init
+npx prisma db push
+```
+
+It takes sometime to sync with @prisma/client, if you get errors delete any similar table name from the db and push prisma db again, then run
+
+```bash
+npx prisma generate
+```
+
+And finally create a circle api, and setup the .env variable to:
+
+```bash
+BEARER_TOKEN=YOUR-CIRCLE-API
+```
+
+And get the publickey from circle. Go to [constants.ts](/nft-dapp/lib/helpers/constants.ts) and replace the publickey with your own
 
 ```bash
 npm run dev
@@ -11,12 +51,6 @@ yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
-
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
-
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
 
 ## Learn More
 

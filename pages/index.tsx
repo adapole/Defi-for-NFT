@@ -275,7 +275,7 @@ class Home extends React.Component<unknown, IAppState> {
 		//
 		const suggestedParams = await apiGetTxnParams(chain);
 
-		const appIndex = 79061945;
+		const appIndex = APP_ID;
 
 		const txn = algosdk.makeApplicationOptInTxnFromObject({
 			from: address,

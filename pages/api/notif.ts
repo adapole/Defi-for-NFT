@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createSub } from '../../prisma/user';
+import { createSub, updatePayment, updateTransfer } from '../../prisma/user';
 
 interface SourceDestinationObj {
 	type: string;
@@ -176,10 +176,15 @@ export default async function handle(
 			switch (notif.notificationType) {
 				case 'transfers':
 					console.log(notif.transfer.status);
+					//const tstatus = await updateTransfer(notif.transfer.id,notif.transfer.status);
 					return res.json({ message: notif.transfer.status });
 				case 'payments':
 					console.log(notif.payment.status);
-					return res.json({ message: notif.payment.status });
+					const paystatus = await updatePayment(
+						notif.payment.id,
+						notif.payment.status
+					);
+					return res.json({ message: paystatus });
 				case 'cards':
 					console.log(notif.card.verification);
 					return res.json({ message: notif.card.verification });

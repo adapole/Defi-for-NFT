@@ -4,11 +4,12 @@ import ASAIcon from './ASAIcon';
 import algo from '../public/algo.svg';
 import { formatBigNumWithDecimals } from '../lib/helpers/utilities';
 import { IAssetData } from '../lib/helpers/types';
+import { USDC } from '../lib/helpers/constants';
 
 const BalanceAsset = (props: { asset: IAssetData; bodyamount: string }) => {
 	const { asset, bodyamount } = props;
 	const nativeCurrencyIcon = asset.id === 0 ? algo : null;
-	const USDCIcon = asset.id === 10458941;
+	const USDCIcon = asset.id === USDC;
 	const [items, setItems] = React.useState('');
 	React.useEffect(() => {
 		console.log('Asset: ' + asset.amount);

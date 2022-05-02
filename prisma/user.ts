@@ -88,6 +88,101 @@ export const createSub = async (SubscribeURL: string) => {
 	});
 	return Subscription;
 };
+export const updateTransfer = async (
+	transactionid: string,
+	transferstatus: string
+) => {
+	const findid = await prisma.users.findFirst({
+		where: {
+			payments: {
+				some: {
+					transactionid: {
+						equals: transactionid,
+					},
+				},
+			},
+		},
+		select: {
+			payments: true,
+		},
+	});
+	const paymenti = findid!.payments;
+
+	const payment = await prisma.users.updateMany({
+		where: {
+			payments: {
+				some: {
+					transactionid: {
+						equals: transactionid,
+					},
+				},
+			},
+		},
+		data: {
+			payments: [
+				{
+					paymentid: paymenti[0].paymentid,
+					transferstatus: transferstatus,
+				},
+			],
+		},
+	});
+	console.log(payment);
+	return payment;
+};
+export const updatePayment = async (paymentid: string, status: string) => {
+	/* const findid = await prisma.users.findFirst({
+		where: {
+			payments: {
+				some: {
+					paymentid: {
+						equals: paymentid,
+					},
+				},
+			},
+		},
+		select: {
+			payments: true,
+		},
+	});
+	//const id = findid!.id;
+	const payments = findid!.payments;
+	const data = {
+		paymentid: payments[0].paymentid,
+		status: status,
+		transferstatus: payments[0].transferstatus,
+		transactionid: payments[0].transactionid,
+		walletid: payments[0].walletid,
+	};
+	payments.push(data); 
+	
+	payments: {set: [...findid!.payments, {
+				paymentid,
+				status}]}
+				*/
+
+	const payment = await prisma.users.updateMany({
+		where: {
+			payments: {
+				some: {
+					paymentid: {
+						equals: paymentid,
+					},
+				},
+			},
+		},
+		data: {
+			payments: [
+				{
+					paymentid,
+					status,
+				},
+			],
+		},
+	});
+	console.log(payment);
+	return payment;
+};
 
 // UPDATE
 export const updateUser = async (id: any, updateData: any) => {

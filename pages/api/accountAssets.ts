@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { testNetClientindexer } from '../../lib/helpers/api';
+import { NFTColl } from '../../lib/helpers/constants';
 import { IAssetData } from '../../lib/helpers/types';
 
 export default async function handle(
@@ -41,7 +42,7 @@ export default async function handle(
 		}
 		return res.status(201).json([
 			{
-				id: 77141623,
+				id: NFTColl,
 				amount: 0,
 				creator: '',
 				frozen: false,

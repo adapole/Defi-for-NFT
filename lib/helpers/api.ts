@@ -1,4 +1,5 @@
 import algosdk from 'algosdk';
+import { APP_ID, USDC } from './constants';
 import { IAssetData } from './types';
 
 export enum ChainType {
@@ -81,10 +82,10 @@ export async function tealProgramMake(amount: number) {
 
 function getUint8Args(amount: number, round: number) {
 	return [
-		algosdk.encodeUint64(10458941),
+		algosdk.encodeUint64(USDC),
 		algosdk.encodeUint64(amount),
 		algosdk.encodeUint64(round),
-		algosdk.encodeUint64(79061945),
+		algosdk.encodeUint64(APP_ID),
 	];
 }
 export async function apiGetAccountAssets(

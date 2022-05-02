@@ -101,6 +101,7 @@ export default function Body(props: {
 	const [borrowLogicSig, setBorrowLogicSig] = useState(new Uint8Array());
 	const [addressLogicSig, setAddressLogicSig] = useState('');
 	const [switcher, setSwitcher] = useState(0);
+	const [amountToRepay, setAmountToRepay] = useState(0);
 	const [selectedNFT, setSelectedNFT] = useState<iOption>({
 		value:
 			'{"id":77141623,"amount":0,"creator":"XCXQVUFRGYR5EKDHNVASR6PZ3VINUKYWZI654UQJ6GA5UVVUHJGM5QCZCY","frozen":false,"decimals":0,"name":"Lofty jina property","unitName":"LFT-jina"}',
@@ -280,7 +281,7 @@ export default function Body(props: {
 									// Check assetId balance
 
 									const accountAssetInfo = await testNetClientalgod
-										.accountAssetInformation(add, 10458941)
+										.accountAssetInformation(add, USDC)
 										.do();
 
 									const assetBalance =
@@ -421,7 +422,7 @@ export default function Body(props: {
 	): Promise<ScenarioReturnType> => {
 		const suggestedParams = await apiGetTxnParams(chain);
 
-		const appIndex = 79061945;
+		const appIndex = APP_ID;
 
 		const amount = Number(userInput * 1000000);
 		console.log(amount);
@@ -432,7 +433,7 @@ export default function Body(props: {
 			from: address,
 			appIndex,
 			appArgs: [Uint8Array.from(Buffer.from('claim'))],
-			foreignAssets: [10458941],
+			foreignAssets: [USDC],
 			suggestedParams,
 		});
 		suggestedParams.flatFee = true;
@@ -441,7 +442,7 @@ export default function Body(props: {
 			from: address,
 			to: algosdk.getApplicationAddress(appIndex),
 			amount: amount,
-			assetIndex: 79077841,
+			assetIndex: DUSD,
 			suggestedParams,
 		});
 
@@ -525,7 +526,7 @@ export default function Body(props: {
 		//if (switcher === 1) {
 		//let lsa = borrowLogicSig;
 		//let lsa = makeLogicSig;
-		console.log('Final' + borrowLogicSig);
+		//console.log('Final' + borrowLogicSig);
 		let lsig = algosdk.logicSigFromByte(borrowLogicSig);
 		console.log(lsig.toByte());
 		let signedTxn = algosdk.signLogicSigTransactionObject(txn, lsig);
@@ -550,9 +551,9 @@ export default function Body(props: {
 		unitName: extractValues.unitName,
 	};
 	const USDCtoken = assets.find(
-		(asset: IAssetData) => asset && asset.id === 10458941
+		(asset: IAssetData) => asset && asset.id === USDC
 	) || {
-		id: 10458941,
+		id: USDC,
 		amount: BigInt(0),
 		creator: '',
 		frozen: false,
@@ -561,12 +562,12 @@ export default function Body(props: {
 		unitName: 'USDC',
 	};
 	const tokens = assets.filter(
-		(asset: IAssetData) => asset && asset.id === 79077841
+		(asset: IAssetData) => asset && asset.id === DUSD
 	);
 	const JINAtoken = assets.find(
-		(asset: IAssetData) => asset && asset.id === 79077841
+		(asset: IAssetData) => asset && asset.id === DUSD
 	) || {
-		id: 79077841,
+		id: DUSD,
 		amount: BigInt(0),
 		creator: '',
 		frozen: false,
@@ -599,6 +600,13 @@ export default function Body(props: {
 		await LatestValue(address, chain, tokenType);
 		return;
 	}
+	const RepayAmount = async () => {
+		const repayAmount = await maximumAmountRepay(NFTSelected, 1, newAmount2);
+		setAmountToRepay(Number(repayAmount));
+	};
+	useEffect(() => {
+		RepayAmount();
+	}, [selectedNFT]);
 	async function maximumAmountRepay(
 		tokenAsset: IAssetData,
 		tokenType: number,
@@ -637,6 +645,7 @@ export default function Body(props: {
 					return Number(formatBigNumWithDecimals(value, 6));
 				}
 				setUserInput(0);
+				return 0;
 			}
 		}
 		return 0;
@@ -728,9 +737,9 @@ export default function Body(props: {
 			}
 			if (tokenType === 1) {
 				const USDCtoken1 = Myassets.find(
-					(asset: IAssetData) => asset && asset.id === 10458941
+					(asset: IAssetData) => asset && asset.id === USDC
 				) || {
-					id: 10458941,
+					id: USDC,
 					amount: BigInt(0),
 					creator: '',
 					frozen: false,
@@ -752,9 +761,9 @@ export default function Body(props: {
 			}
 			if (tokenType === 2) {
 				const JINAtoken1 = Myassets.find(
-					(asset: IAssetData) => asset && asset.id === 79077841
+					(asset: IAssetData) => asset && asset.id === DUSD
 				) || {
-					id: 79077841,
+					id: DUSD,
 					amount: BigInt(0),
 					creator: '',
 					frozen: false,
@@ -1554,7 +1563,7 @@ export default function Body(props: {
 									assetVals: assetsSelected,
 								}}
 							>
-								<SelectAssets assetid={77141623} />
+								<SelectAssets assetid={NFTColl} />
 							</assetsContext.Provider>
 						</>
 					)}
@@ -1786,7 +1795,7 @@ export default function Body(props: {
 								</span>
 								<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
 									<span className='pr-2 text-indigo-400'>Amount to Repay</span>
-									<span className='pl-2 text-gray-500'>0</span>
+									<span className='pl-2 text-gray-500'>{amountToRepay}</span>
 								</p>
 							</div>
 
