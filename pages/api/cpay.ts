@@ -43,7 +43,7 @@ export default async function handle(
 			autoCapture: true,
 			source: { id: cardId, type: 'card' },
 			verification: 'cvv',
-			description: 'Payment',
+			description: walletId,
 			keyId,
 			encryptedData,
 		}),
