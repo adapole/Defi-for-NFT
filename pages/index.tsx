@@ -457,7 +457,7 @@ class Home extends React.Component<unknown, IAppState> {
 	};
 	public scenarios: Array<{ name: string; scenario: Scenario }> = [
 		{
-			name: 'Optin To Jina',
+			name: 'Proceed to OptIn',
 			scenario: this.singleJinaAppOptIn,
 		},
 	];

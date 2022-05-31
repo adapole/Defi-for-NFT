@@ -605,7 +605,7 @@ export default function Body(props: {
 		setAmountToRepay(Number(repayAmount));
 	};
 	useEffect(() => {
-		RepayAmount();
+		if (openTab === 2) RepayAmount();
 	}, [selectedNFT]);
 	async function maximumAmountRepay(
 		tokenAsset: IAssetData,
@@ -1362,27 +1362,32 @@ export default function Body(props: {
 		callback: (options: iOption[]) => void
 	) => {
 		setTimeout(async () => {
-			// Fetch data
-			const data = await getNFTs();
-			if (data !== undefined) {
-				console.log(data);
+			try {
+				// Fetch data
+				const data = await getNFTs();
+				if (data !== undefined) {
+					console.log(data);
 
-				// Extract data and populate AsyncSelect
-				const tempArray: iOption[] = [];
-				/* if (data[0]['id'] === 0) {
-					callback([]);
-				} */
-				data.forEach((element: any) => {
-					tempArray.push({
-						label: `${element['unitName']}`,
-						value: `${JSON.stringify(element, replacer)}`,
+					// Extract data and populate AsyncSelect
+					const tempArray: iOption[] = [];
+					/* if (data[0]['id'] === 0) {
+						callback([]);
+					} */
+					data.forEach((element: any) => {
+						tempArray.push({
+							label: `${element['unitName']}`,
+							value: `${JSON.stringify(element, replacer)}`,
+						});
 					});
-				});
-				callback(
-					tempArray.filter((i) =>
-						i.label.toLowerCase().includes(inputValue.toLowerCase())
-					)
-				);
+					callback(
+						tempArray.filter((i) =>
+							i.label.toLowerCase().includes(inputValue.toLowerCase())
+						)
+					);
+				}
+			} catch (error) {
+				console.log(error);
+				callback([]);
 			}
 		});
 	};

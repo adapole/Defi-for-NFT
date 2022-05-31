@@ -86,7 +86,7 @@ export default function AppOptin(props: {
 	};
 	const scenarios: Array<{ name: string; scenario: Scenario }> = [
 		{
-			name: 'Optin To App',
+			name: 'Proceed to OptIn',
 			scenario: singleAppOptIn,
 		},
 	];
