@@ -314,6 +314,8 @@ export async function checkAssetOptin(assetId: number, address: string) {
 		.lookupAccountAssets(address)
 		.assetId(assetId)
 		.do();
-	if (accountInfo != undefined) return accountInfo['assets'];
+	if (accountInfo.assets.length > 0) {
+		return accountInfo['assets'];
+	}
 	return false;
 }
