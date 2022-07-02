@@ -11,7 +11,7 @@ import {
 //import {name,networks,methods} from '../public/d4t.json';
 import { create } from 'ipfs-http-client';
 import { assetsContext } from '../lib/helpers/assetsContext';
-import { APP_ID, NFTColl, USDC } from '../lib/helpers/constants';
+import { APP_ID, DUSD, NFTColl, USDC } from '../lib/helpers/constants';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 const ipfs = create({
@@ -182,7 +182,7 @@ export default function MyalgoConnect(props: {
 
 			const myAlgoConnect = new MyAlgoConnect();
 
-			const optin = await checkAssetOptin(NFTColl, result);
+			const optin = await checkAssetOptin(DUSD, result);
 			if ((optin.length = 1 && !optin[0]['deleted'])) {
 				txns.push(txn2);
 				const signedTx = await myAlgoConnect.signTransaction(
@@ -314,5 +314,6 @@ export async function checkAssetOptin(assetId: number, address: string) {
 		.lookupAccountAssets(address)
 		.assetId(assetId)
 		.do();
-	return accountInfo['assets'];
+	if (accountInfo != undefined) return accountInfo['assets'];
+	return false;
 }
